@@ -1,6 +1,6 @@
 # TradeFlux AI - Real-Time Cryptocurrency Analytics Platform
 
-A comprehensive real-time cryptocurrency analytics platform with technical indicators, ML forecasting, alerting, and mobile client support.
+A comprehensive real-time cryptocurrency analytics platform with technical indicators, ML forecasting, alerting and mobile client support.
 
 ## Architecture
 
