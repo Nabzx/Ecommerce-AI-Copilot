@@ -39,37 +39,37 @@ A comprehensive real-time cryptocurrency analytics platform with technical indic
 
 ## Features
 
-### ✅ Real-Time Data Pipeline
+### Real-Time Data Pipeline
 - **Coinbase WebSocket** producer for live BTC/USD prices
 - **Kafka** message streaming
 - **Redis** for analytics storage (LIST for price history, HASH for analytics)
 - **Python consumer** with incremental technical indicators
 
-### ✅ Technical Indicators
+### Technical Indicators
 - **RSI (14)**: Relative Strength Index
 - **MACD (12/26/9)**: Moving Average Convergence Divergence
 - **Bollinger Bands (20, 2)**: Upper, Middle, Lower bands
 - **Volatility**: 20-period standard deviation
 
-### ✅ Machine Learning Forecasting
+### Machine Learning Forecasting
 - **TensorFlow LSTM** model for 60-second price prediction
 - FastAPI microservice for predictions
 - Docker containerization
 
-### ✅ AWS Lambda Alerting
+### AWS Lambda Alerting
 - Price movement alerts (>1.5% in 5 minutes)
 - Volatility threshold alerts
 - MACD crossing alerts
 - Email (SES) and Webhook support
 
-### ✅ Professional Dashboard
+### Professional Dashboard
 - Bloomberg-style UI design
 - Real-time indicator visualizations
 - Forecast display
 - Responsive grid layout
 - Vercel deployment ready
 
-### ✅ SwiftUI iOS Client
+### SwiftUI iOS Client
 - Native iOS app with tabbed interface
 - Real-time price updates
 - Indicator visualization
@@ -415,9 +415,6 @@ All indicators are calculated incrementally without recomputing full history:
 - Check network permissions in Info.plist
 - Update `baseURL` in `ApiClient.swift` if needed
 
-## License
-
-MIT
 
 ## Contributing
 
