@@ -42,39 +42,56 @@ def split_markdown(text: str, source: str) -> list[tuple[str, str]]:
     if first_line.startswith("# "):
         document_title = first_line[2:].strip()
 
-    sections = re.split(r"^## ", text, flags=re.MULTILINE)
-    chunks: list[tuple[str, str]] = []
-
-    for section in sections:
+    # --- parse into (heading, body) ---
+    sections: list[tuple[str, str]] = []
+    for section in re.split(r"^## ", text, flags=re.MULTILINE):
         section = section.strip()
         if not section:
             continue
-
         lines = section.split("\n")
         heading = lines[0].strip().lstrip("# ").strip()
         body = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+        # The first block is the H1, which usually has no body worth keeping.
+        if body:
+            sections.append((heading, body))
 
-        # The first section is the H1 block, which often has no body worth keeping.
-        if not body:
-            continue
+    chunks: list[tuple[str, str]] = []
+    buffer: list[tuple[str, str]] = []
 
-        title = f"{document_title} › {heading}" if heading != document_title else document_title
+    def flush() -> None:
+        """Turn whatever has accumulated into one chunk."""
+        if not buffer:
+            return
+        headings = ", ".join(heading for heading, _ in buffer)
+        body = "\n\n".join(f"{heading}\n{text}" for heading, text in buffer)
+        chunks.append((f"{document_title} › {headings}", body))
+        buffer.clear()
 
-        if len(body) <= MAX_CHUNK_CHARS:
-            chunks.append((title, body))
-            continue
-
-        # Too long — pack paragraphs together until the next one won't fit.
-        current = ""
-        for paragraph in body.split("\n\n"):
-            if current and len(current) + len(paragraph) + 2 > MAX_CHUNK_CHARS:
+    for heading, body in sections:
+        # A long section stands on its own, split on paragraph boundaries.
+        if len(body) > MAX_CHUNK_CHARS:
+            flush()
+            title = f"{document_title} › {heading}"
+            current = ""
+            for paragraph in body.split("\n\n"):
+                if current and len(current) + len(paragraph) + 2 > MAX_CHUNK_CHARS:
+                    chunks.append((title, current.strip()))
+                    current = paragraph
+                else:
+                    current = f"{current}\n\n{paragraph}" if current else paragraph
+            if current.strip():
                 chunks.append((title, current.strip()))
-                current = paragraph
-            else:
-                current = f"{current}\n\n{paragraph}" if current else paragraph
-        if current.strip():
-            chunks.append((title, current.strip()))
+            continue
 
+        # Short sections get merged with their neighbours. Splitting on every
+        # heading leaves fragments like "Shipping › Europe" too thin to rank —
+        # they lose the surrounding delivery language that makes them findable.
+        pending = sum(len(b) for _, b in buffer) + len(body)
+        if buffer and pending > MAX_CHUNK_CHARS:
+            flush()
+        buffer.append((heading, body))
+
+    flush()
     return chunks
 
 
@@ -116,7 +133,11 @@ async def build_index() -> dict:
         documents = collect_documents(session)
         embedder = await vectorstore.resolve_embedder()
 
-        texts = [doc["text"] for doc in documents]
+        # Embed the heading along with the body. Without it a section like
+        # "Sizing › Known issue" loses the word "sizing" entirely, and a
+        # question about sizing then ranks below every product in the
+        # catalogue that happens to share a word with the query.
+        texts = [f"{doc['title']}\n{doc['text']}" for doc in documents]
 
         # The fallback has to see the corpus before it can embed anything.
         if isinstance(embedder, vectorstore.TfidfEmbedder):
@@ -160,8 +181,18 @@ async def get_query_embedder(session: Session):
     return vectorstore.ModelEmbedder()
 
 
-async def retrieve(session: Session, query: str, k: int = 4) -> list[dict]:
-    """The chunks most relevant to a question, best first."""
+async def retrieve(session: Session, query: str, k: int = 4, per_source: int = 2) -> list[dict]:
+    """
+    The chunks most relevant to a question, best first.
+
+    Results are capped per source. There are fourteen products in the
+    catalogue and only a handful of policy sections, so without a cap a
+    question like "does the tee run small?" fills every slot with near
+    identical product entries and pushes the sizing doc — the one thing that
+    actually answers it — off the end of the list.
+
+    The cap is relaxed at the end if there weren't enough sources to fill k.
+    """
     chunks, matrix = vectorstore.load_matrix(session)
     if not chunks:
         return []
@@ -169,7 +200,29 @@ async def retrieve(session: Session, query: str, k: int = 4) -> list[dict]:
     embedder = await get_query_embedder(session)
     query_vector = (await embedder.embed([query]))[0]
 
-    hits = vectorstore.search(np.asarray(query_vector), chunks, matrix, k=k)
+    # Pull a wider candidate list so there's something to diversify over.
+    hits = vectorstore.search(np.asarray(query_vector), chunks, matrix, k=k * 4)
+
+    selected: list[tuple[Chunk, float]] = []
+    per_source_count: dict[str, int] = {}
+
+    for chunk, score in hits:
+        if per_source_count.get(chunk.source, 0) >= per_source:
+            continue
+        selected.append((chunk, score))
+        per_source_count[chunk.source] = per_source_count.get(chunk.source, 0) + 1
+        if len(selected) == k:
+            break
+
+    # Not enough variety to fill k — take the next best regardless of source.
+    if len(selected) < k:
+        chosen = {id(chunk) for chunk, _ in selected}
+        for chunk, score in hits:
+            if id(chunk) in chosen:
+                continue
+            selected.append((chunk, score))
+            if len(selected) == k:
+                break
 
     return [
         {
@@ -178,7 +231,7 @@ async def retrieve(session: Session, query: str, k: int = 4) -> list[dict]:
             "text": chunk.text,
             "score": round(score, 3),
         }
-        for chunk, score in hits
+        for chunk, score in selected
     ]
 
 
