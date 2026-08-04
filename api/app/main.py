@@ -22,10 +22,12 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# The dashboard runs on a different port in dev, so it needs CORS.
+# The dashboard runs on its own port in dev, so it needs CORS. The regex covers
+# localhost on any port rather than hardcoding 3000, which saves a confusing
+# afternoon when something else has already taken it.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
