@@ -48,12 +48,25 @@ def normalise(matrix: np.ndarray) -> np.ndarray:
 
 
 class ModelEmbedder:
-    """Embeddings from a real model, through the gateway."""
+    """
+    Embeddings from a real model, through the gateway.
+
+    Some models — nomic being the common one — are trained with a prefix
+    saying whether the text is a document being stored or a question being
+    asked, and they get noticeably worse without it. Leaving the prefixes off
+    was why a search for "warm layer for winter" wasn't returning the hoodie.
+    """
 
     name = f"model:{settings.llm_embed_model}"
 
-    async def embed(self, texts: list[str]) -> np.ndarray:
-        vectors = await llm.embed(texts)
+    def _prefix(self, kind: str) -> str:
+        if "nomic" not in settings.llm_embed_model.lower():
+            return ""
+        return "search_query: " if kind == "query" else "search_document: "
+
+    async def embed(self, texts: list[str], kind: str = "document") -> np.ndarray:
+        prefix = self._prefix(kind)
+        vectors = await llm.embed([f"{prefix}{text}" for text in texts])
         return normalise(np.asarray(vectors, dtype=np.float32))
 
 
@@ -78,7 +91,8 @@ class TfidfEmbedder:
         )
         self._vectorizer.fit(corpus)
 
-    async def embed(self, texts: list[str]) -> np.ndarray:
+    async def embed(self, texts: list[str], kind: str = "document") -> np.ndarray:
+        # `kind` is ignored here — TF-IDF has no notion of query vs document.
         if self._vectorizer is None:
             raise RuntimeError("TfidfEmbedder.fit() has to be called first")
         dense = self._vectorizer.transform(texts).toarray().astype(np.float32)
