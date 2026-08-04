@@ -81,6 +81,24 @@ class Review(SQLModel, table=True):
     theme: Optional[str] = None  # e.g. "sizing", "shipping speed"
 
 
+class Chunk(SQLModel, table=True):
+    """
+    A piece of store knowledge the copilot can retrieve and cite.
+
+    Each row records which embedder produced its vector, because vectors from
+    two different models can't be compared — mixing them would return
+    confident nonsense rather than an obvious error.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source: str = Field(index=True)  # "shipping.md" or "catalogue"
+    title: str  # "Shipping › Drops" — shown as the citation
+    text: str
+    embedder: str  # "model:nomic-embed-text" or "tfidf"
+    dim: int
+    embedding: bytes  # float32 array, packed
+
+
 class DailySales(SQLModel, table=True):
     """
     Units sold per variant per day.
