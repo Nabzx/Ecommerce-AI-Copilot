@@ -94,6 +94,9 @@ class Chunk(SQLModel, table=True):
     source: str = Field(index=True)  # "shipping.md" or "catalogue"
     title: str  # "Shipping › Drops" — shown as the citation
     text: str
+    # For catalogue chunks, the product this describes. Lets semantic search
+    # get back to a real row instead of matching on the title string.
+    ref_id: Optional[int] = Field(default=None, index=True)
     embedder: str  # "model:nomic-embed-text" or "tfidf"
     dim: int
     embedding: bytes  # float32 array, packed

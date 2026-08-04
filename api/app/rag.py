@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 
 import numpy as np
-from sqlmodel import Session, delete, select
+from sqlmodel import Session, select
 
 from app import vectorstore
 from app.db import engine, create_tables
@@ -26,6 +26,25 @@ KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
 # Roughly a paragraph or two. Small enough to be a precise citation, big enough
 # to still make sense when the model reads it on its own.
 MAX_CHUNK_CHARS = 700
+
+# What each kind of thing is actually made of. Taken straight from the FAQ, and
+# it's what lets a search for "something light for summer" tell a 240gsm tee
+# from a 400gsm hoodie — nothing else in the product data says how warm it is.
+#
+# The seasons are named and the word "warm" only appears on things that
+# actually are. The tee used to read "breathable for warm weather", and that
+# one word was enough to rank it above the hoodie for "warm layer for winter" —
+# embeddings still carry plenty of straight lexical signal.
+FABRIC = {
+    "hoodie": "400gsm brushed-back cotton loopback. Heavyweight and warm, for autumn and winter.",
+    "crewneck": "400gsm brushed-back cotton. Heavyweight and warm, for autumn and winter.",
+    "tee": "240gsm combed cotton. Lightweight and breathable, for summer and hot days.",
+    "longsleeve": "240gsm combed cotton. Midweight layer for spring and autumn.",
+    "trouser": "Cotton ripstop. Midweight, worn all year round.",
+    "short": "Cotton ripstop. Lightweight, for summer and hot days.",
+    "outerwear": "Insulated and heavyweight. The warmest layer, for deep winter and cold days.",
+    "accessory": "Knitted. Worn through autumn and winter.",
+}
 
 
 def split_markdown(text: str, source: str) -> list[tuple[str, str]]:
@@ -113,14 +132,36 @@ def collect_documents(session: Session) -> list[dict]:
         in_stock = [v.title for v in variants if v.inventory_quantity > 0]
         sold_out = [v.title for v in variants if v.inventory_quantity == 0]
 
+        # What the copilot reads, so it can answer "is the hoodie in stock?".
         text = (
             f"{product.title} is a {product.product_type} priced at £{product.price:.2f}. "
+            f"{FABRIC.get(product.product_type, '')} "
             f"Tags: {product.tags.replace(',', ', ')}. "
             f"Sizes in stock: {', '.join(in_stock) if in_stock else 'none'}. "
             f"Sold out: {', '.join(sold_out) if sold_out else 'none'}. "
             f"Total units on hand: {sum(v.inventory_quantity for v in variants)}."
         )
-        documents.append({"source": "catalogue", "title": product.title, "text": text})
+
+        # What gets embedded, which is deliberately not the same thing. The
+        # stock lines are near identical on every product, and including them
+        # pulled all fourteen vectors together — "something light for summer"
+        # was returning the puffer vest first. Describing only the garment
+        # keeps the differences that matter.
+        embed_text = (
+            f"{product.title}. A {product.product_type}. "
+            f"{FABRIC.get(product.product_type, '')} "
+            f"Tags: {product.tags.replace(',', ', ')}. Priced at £{product.price:.2f}."
+        )
+
+        documents.append(
+            {
+                "source": "catalogue",
+                "title": product.title,
+                "text": text,
+                "embed_text": embed_text,
+                "ref_id": product.id,
+            }
+        )
 
     return documents
 
@@ -137,7 +178,8 @@ async def build_index() -> dict:
         # "Sizing › Known issue" loses the word "sizing" entirely, and a
         # question about sizing then ranks below every product in the
         # catalogue that happens to share a word with the query.
-        texts = [f"{doc['title']}\n{doc['text']}" for doc in documents]
+        # Products supply their own embed_text; documents fall back to the body.
+        texts = [doc.get("embed_text") or f"{doc['title']}\n{doc['text']}" for doc in documents]
 
         # The fallback has to see the corpus before it can embed anything.
         if isinstance(embedder, vectorstore.TfidfEmbedder):
@@ -145,13 +187,20 @@ async def build_index() -> dict:
 
         vectors = await embedder.embed(texts)
 
-        session.exec(delete(Chunk))
+        # Drop and recreate rather than delete the rows. The index is derived
+        # data that can always be rebuilt, so when a column gets added to
+        # Chunk this picks it up instead of failing against the old table —
+        # which saves carrying a migration tool for a cache.
+        Chunk.__table__.drop(engine, checkfirst=True)
+        Chunk.__table__.create(engine)
+
         for doc, vector in zip(documents, vectors):
             session.add(
                 Chunk(
                     source=doc["source"],
                     title=doc["title"],
                     text=doc["text"],
+                    ref_id=doc.get("ref_id"),
                     embedder=embedder.name,
                     dim=len(vector),
                     embedding=vectorstore.pack(vector),
@@ -198,7 +247,7 @@ async def retrieve(session: Session, query: str, k: int = 4, per_source: int = 2
         return []
 
     embedder = await get_query_embedder(session)
-    query_vector = (await embedder.embed([query]))[0]
+    query_vector = (await embedder.embed([query], kind="query"))[0]
 
     # Pull a wider candidate list so there's something to diversify over.
     hits = vectorstore.search(np.asarray(query_vector), chunks, matrix, k=k * 4)
