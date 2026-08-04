@@ -50,6 +50,53 @@ export interface CustomerStats {
   returning_customers: number;
 }
 
+export interface Stockout {
+  variant_id: number;
+  product_id: number;
+  product: string;
+  size: string;
+  sku: string;
+  inventory: number;
+  daily_rate: number;
+  days_to_stockout: number | null;
+  stockout_on: string | null;
+}
+
+export interface ForecastAccuracy {
+  folds: number;
+  test_days: number;
+  units_actually_sold: number;
+  error_pct: number;
+  model_only_error_pct: number;
+  naive_error_pct: number;
+  beats_baseline: boolean;
+}
+
+export interface ProductHit {
+  product_id: number;
+  title: string;
+  product_type: string;
+  price: number;
+  tags: string[];
+  sizes_in_stock: string[];
+  units_in_stock: number;
+  score: number;
+}
+
+export interface AlertHit {
+  label: string;
+  value: number;
+}
+
+export interface AlertRow {
+  id: number;
+  phrase: string;
+  reads_as: string;
+  triggered: boolean;
+  count: number;
+  hits: AlertHit[];
+}
+
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, { cache: 'no-store' });
   if (!response.ok) {
@@ -58,10 +105,44 @@ async function get<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+/** Reads the message the API sent rather than showing a bare status code. */
+async function detail(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = await response.json();
+    return typeof body?.detail === 'string' ? body.detail : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export const api = {
   summary: (days: number) => get<Summary>(`/api/metrics/summary?days=${days}`),
   revenueSeries: (days: number) => get<RevenuePoint[]>(`/api/metrics/revenue-series?days=${days}`),
   topProducts: (days: number) => get<TopProduct[]>(`/api/metrics/top-products?days=${days}&limit=6`),
   lowStock: () => get<LowStockRow[]>('/api/metrics/low-stock'),
   customers: (days: number) => get<CustomerStats>(`/api/metrics/customers?days=${days}`),
+
+  stockouts: (limit = 8) => get<Stockout[]>(`/api/forecast/stockouts?limit=${limit}`),
+  forecastAccuracy: () => get<ForecastAccuracy>('/api/forecast/accuracy'),
+
+  searchProducts: (q: string) =>
+    get<ProductHit[]>(`/api/search/products?q=${encodeURIComponent(q)}&limit=5`),
+
+  alerts: () => get<AlertRow[]>('/api/alerts'),
+
+  async createAlert(phrase: string): Promise<AlertRow> {
+    const response = await fetch(`${API_BASE}/api/alerts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phrase }),
+    });
+    if (!response.ok) {
+      throw new Error(await detail(response, `The server answered ${response.status}.`));
+    }
+    return response.json();
+  },
+
+  async deleteAlert(id: number): Promise<void> {
+    await fetch(`${API_BASE}/api/alerts/${id}`, { method: 'DELETE' });
+  },
 };
