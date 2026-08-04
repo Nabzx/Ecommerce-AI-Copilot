@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import BestSellers from '@/components/BestSellers';
 import Card from '@/components/Card';
+import CopilotPanel from '@/components/CopilotPanel';
 import LowStockTable from '@/components/LowStockTable';
 import MetricCard from '@/components/MetricCard';
 import RevenueChart from '@/components/RevenueChart';
 import ThemeToggle from '@/components/ThemeToggle';
+import { useCopilot } from '@/lib/useCopilot';
 import {
   api,
   type CustomerStats,
@@ -28,6 +30,10 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<CustomerStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copilotOpen, setCopilotOpen] = useState(false);
+
+  // Owned here so the side rail and the phone sheet share one conversation.
+  const copilot = useCopilot();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,9 +64,11 @@ export default function Dashboard() {
   }, [load]);
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[1180px] px-4 pb-20 sm:px-6">
+    <main className="mx-auto min-h-screen w-full max-w-[1440px] px-4 pb-20 sm:px-6">
       <Header days={days} onDaysChange={setDays} />
 
+      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start xl:gap-4">
+        <div>
       {error && (
         <div className="rounded-card border border-line bg-surface p-5">
           <p className="text-sm text-ink">{error}</p>
@@ -132,6 +140,43 @@ export default function Dashboard() {
             >
               <LowStockTable rows={stock} />
             </Card>
+          </div>
+        </div>
+      )}
+        </div>
+
+        {/* Docked beside the dashboard on a wide screen. Below that there
+            isn't room for both, so it becomes a sheet you pull up. */}
+        <aside className="hidden xl:block">
+          <div className="sticky top-[104px] h-[calc(100vh-124px)]">
+            <CopilotPanel copilot={copilot} />
+          </div>
+        </aside>
+      </div>
+
+      {/* --- the phone version --- */}
+      {!copilotOpen && (
+        <button
+          onClick={() => setCopilotOpen(true)}
+          className="fixed bottom-5 right-5 z-20 flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-ink shadow-lg xl:hidden"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 0 1-.9-3.8 8.38 8.38 0 0 1 8.4-9 8.5 8.5 0 0 1 8.6 8.5z" />
+          </svg>
+          Ask
+        </button>
+      )}
+
+      {copilotOpen && (
+        <div className="fixed inset-0 z-30 flex flex-col bg-canvas/60 backdrop-blur-sm xl:hidden">
+          {/* Tapping the dimmed area above the sheet closes it. */}
+          <button
+            className="flex-1"
+            aria-label="Close copilot"
+            onClick={() => setCopilotOpen(false)}
+          />
+          <div className="h-[78vh] px-3 pb-3">
+            <CopilotPanel copilot={copilot} onClose={() => setCopilotOpen(false)} />
           </div>
         </div>
       )}
