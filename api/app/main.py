@@ -9,12 +9,16 @@ talks to nothing else.
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app import metrics
+from app import chat, metrics, rag
 from app.config import settings
 from app.db import create_tables, get_session
+from app.llm import llm
 from app.models import Product, Review, Variant
+from app.ratelimit import rate_limit
 
 app = FastAPI(
     title="StoreSense API",
@@ -41,8 +45,53 @@ def on_startup() -> None:
 
 
 @app.get("/health")
-def health() -> dict:
-    return {"status": "ok", "store": settings.store_name}
+async def health() -> dict:
+    # Reports whether a model is reachable so the UI can say something useful
+    # instead of just failing when someone tries the copilot.
+    return {
+        "status": "ok",
+        "store": settings.store_name,
+        "model_available": await llm.available(),
+        "model": settings.llm_model,
+    }
+
+
+# --- copilot ---
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[dict] = []
+
+
+@app.post("/api/chat", dependencies=[Depends(rate_limit)])
+async def post_chat(body: ChatRequest, session: Session = Depends(get_session)):
+    """Streams the answer back as server-sent events."""
+    return StreamingResponse(
+        chat.stream_reply(session, body.message, body.history),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            # Stops nginx buffering the stream and defeating the whole point.
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/api/index/rebuild", dependencies=[Depends(rate_limit)])
+async def rebuild_index():
+    """Re-chunk and re-embed everything. Run after changing the catalogue."""
+    return await rag.build_index()
+
+
+@app.get("/api/search/knowledge", dependencies=[Depends(rate_limit)])
+async def search_knowledge(
+    q: str = Query(..., min_length=2),
+    k: int = Query(4, ge=1, le=10),
+    session: Session = Depends(get_session),
+):
+    """Raw retrieval, handy for checking what the copilot is actually seeing."""
+    return await rag.retrieve(session, q, k)
 
 
 # --- dashboard numbers ---
