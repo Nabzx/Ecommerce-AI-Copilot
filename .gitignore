@@ -1,110 +1,26 @@
-############################################
-# GLOBAL / SYSTEM
-############################################
-.DS_Store
-*.log
-*.tmp
-*.swp
-
-############################################
-# ENVIRONMENT VARIABLES / SECRETS
-############################################
-.env
-.env.*
-.env*.local
-dashboard/.env*
-tf-service/.env*
-aws-lambda/.env*
-
-############################################
-# PYTHON
-############################################
-# Virtual environments
+# python
+__pycache__/
+*.py[cod]
 .venv/
 venv/
-env/
+*.db
+*.sqlite3
 
-# Cache & artifacts
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.python-version
-*.ipynb_checkpoints
-
-# TensorFlow /
-tf-service/model/
-tf-service/__pycache__/
-tf-service/*.h5
-tf-service/*.keras
-tf-service/checkpoints/
-
-############################################
-# NODE / NEXT.JS / DASHBOARD
-############################################
+# node / next
 node_modules/
-dashboard/node_modules/
-dashboard/.next/
-dashboard/out/
-dashboard/.vercel
-
-# Next build info
 .next/
 out/
 *.tsbuildinfo
-next-env.d.ts
 
-############################################
-# JAVA / MAVEN
-############################################
-java-producer/target/
-*.class
-*.jar
-*.war
-*.ear
+# env + secrets
+.env
+.env.local
+.env*.local
 
-############################################
-# SWIFT / XCODE (iOS APP)
-############################################
-ios-app/TradeFluxMobile/build/
-ios-app/TradeFluxMobile/DerivedData/
-*.xcworkspace/
-*.xcuserstate
-*.xcuserdatad
-*.xcsettings
-*.xcodeproj/project.xcworkspace
-*.xcodeproj/xcuserdata
+# os / editor
+.DS_Store
+.vscode/
+.idea/
 
-############################################
-# DOCKER
-############################################
-*.pid
-docker/*.log
-
-############################################
-# REDIS
-############################################
-dump.rdb
-appendonly.aof
-
-############################################
-# KAFKA (local logs)
-############################################
-kafka/logs/
-zookeeper/logs/
-
-############################################
-# MACOS
-############################################
-*.DS_Store
-*.AppleDouble
-*.LSOverride
-
-############################################
-# MISC
-############################################
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnp
-.pnp.js
+# uploads made while demoing the vision tagger
+api/uploads/
