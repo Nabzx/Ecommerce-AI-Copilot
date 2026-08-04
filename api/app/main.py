@@ -7,13 +7,13 @@ talks to nothing else.
     uvicorn app.main:app --reload
 """
 
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app import chat, metrics, rag
+from app import chat, forecast, metrics, rag, search
 from app.config import settings
 from app.db import create_tables, get_session
 from app.llm import llm
@@ -92,6 +92,42 @@ async def search_knowledge(
 ):
     """Raw retrieval, handy for checking what the copilot is actually seeing."""
     return await rag.retrieve(session, q, k)
+
+
+@app.get("/api/search/products", dependencies=[Depends(rate_limit)])
+async def search_products(
+    q: str = Query(..., min_length=2),
+    limit: int = Query(6, ge=1, le=20),
+    session: Session = Depends(get_session),
+):
+    """Natural language catalogue search — "cozy autumn pieces"."""
+    return await search.search_products(session, q, limit)
+
+
+# --- forecasting ---
+
+@app.get("/api/forecast/stockouts")
+def get_stockouts(limit: int = Query(10, ge=1, le=60), session: Session = Depends(get_session)):
+    """Which sizes run out next, soonest first."""
+    try:
+        return forecast.stockout_report(session, limit)
+    except ValueError as exc:
+        # No sales history yet — a fresh clone before the seeder has run.
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.get("/api/forecast/accuracy")
+def get_forecast_accuracy(session: Session = Depends(get_session)):
+    """
+    How well the forecast actually does against a moving average.
+
+    First call refits across four folds and takes about half a minute, so the
+    dashboard asks for this on its own rather than blocking on it.
+    """
+    try:
+        return forecast.backtest(session)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 # --- dashboard numbers ---

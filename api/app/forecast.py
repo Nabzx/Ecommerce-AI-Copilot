@@ -310,6 +310,11 @@ def backtest(session: Session, test_days: int = FORWARD_WINDOW, folds: int = 4) 
     if len(days) < LONG_WINDOW + FORWARD_WINDOW + test_days * folds:
         raise ValueError("not enough history to backtest")
 
+    # Refitting four models takes half a minute, and the answer only changes
+    # when there's meaningfully more history, so it's worked out once.
+    if "backtest" in _cache:
+        return _cache["backtest"]
+
     totals = {"blend": 0.0, "model": 0.0, "naive": 0.0}
     actual_total = 0.0
 
@@ -322,7 +327,7 @@ def backtest(session: Session, test_days: int = FORWARD_WINDOW, folds: int = 4) 
 
     as_pct = {key: round(value / actual_total * 100, 1) for key, value in totals.items()}
 
-    return {
+    _cache["backtest"] = {
         "folds": folds,
         "test_days": test_days,
         "units_actually_sold": int(actual_total),
@@ -333,6 +338,7 @@ def backtest(session: Session, test_days: int = FORWARD_WINDOW, folds: int = 4) 
         "naive_error_pct": as_pct["naive"],
         "beats_baseline": totals["blend"] < totals["naive"],
     }
+    return _cache["backtest"]
 
 
 def stockout_report(session: Session, limit: int | None = None) -> list[dict]:
