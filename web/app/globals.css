@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  noszn's palette: black, greys, white, and one accent.
+
+  Light and dark are two separate sets of values that were each picked for
+  their own background, not one flipped into the other. The greys in dark mode
+  are warmer and the steps are closer together, because pure #000 with pure
+  #fff text is harsh to look at for any length of time.
+*/
+
+:root {
+  --canvas: #f7f7f5; /* page background, very slightly warm */
+  --surface: #ffffff; /* cards */
+  --raised: #f1f1ee; /* hovered rows, inputs */
+  --line: #e3e3df; /* hairlines */
+
+  --ink: #0c0c0b; /* headings and figures */
+  --ink-muted: #5c5c57; /* body text */
+  --ink-faint: #91918a; /* micro labels, axis ticks */
+
+  /* The one accent. Only ever used for AI and interactive bits, never data. */
+  --accent: #c8ec32;
+  --accent-ink: #0c0c0b; /* text sitting on the accent */
+
+  /* Status. Fixed in both themes, always shown with a word next to them. */
+  --warning: #b4790a;
+  --critical: #c0392f;
+
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: #0b0b0a;
+  --surface: #141413;
+  --raised: #1e1e1c;
+  --line: #2b2b28;
+
+  --ink: #f4f4f0;
+  --ink-muted: #a3a39a;
+  --ink-faint: #6e6e66;
+
+  --accent: #d4f244;
+  --accent-ink: #0b0b0a;
+
+  --warning: #e0a52a;
+  --critical: #e06a5f;
+
+  color-scheme: dark;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Figures line up in columns when they're tabular. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The tiny wide-tracked uppercase labels that hold the whole look together. */
+.label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Recharts draws its own SVG, so give it something to inherit from. */
+.recharts-surface {
+  overflow: visible;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Keyboard focus is the other place the accent earns its keep. */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Scrollbars inside the copilot panel, kept out of the way. */
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
