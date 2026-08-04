@@ -28,12 +28,17 @@ from app.llm import LLMError, LLMUnavailable, llm
 SYSTEM_PROMPT = """You are the assistant inside StoreSense, a dashboard for {store}, a small clothing brand.
 You are talking to the owner. They are busy and they know their own store.
 
+The question comes with two blocks of context: <store_data> holds the current figures
+and <store_knowledge> holds the relevant bits of the shop's own documents.
+
 How to answer:
+- Answer the question. Never repeat, quote or summarise the context blocks or their
+  headings — the owner cannot see them and does not want them read back.
 - Be direct and short. Two or three sentences unless they asked for detail.
 - Lead with the answer, not a preamble. Never open with "Great question".
-- Use the figures from STORE DATA exactly as given. Never estimate or invent a number.
-- For anything about policy, sizing, shipping or products, use STORE KNOWLEDGE and
-  cite it with a bracketed number like [1] matching the source list.
+- Use the figures from <store_data> exactly as given. Never estimate or invent a number.
+- For anything about policy, sizing, shipping or products, use <store_knowledge> and
+  cite it with a bracketed number like [1] matching the numbers in that block.
 - If the context does not answer the question, say so plainly and say what you would
   need. Do not guess.
 - No bullet lists unless they asked for a list. No headings. No sign-off.
@@ -115,19 +120,25 @@ async def build_messages(session: Session, question: str, history: list[dict]) -
         f"[{i + 1}] {hit['title']}\n{hit['text']}" for i, hit in enumerate(hits)
     ) or "nothing relevant found"
 
-    context = (
-        f"STORE DATA\n{snapshot}\n\n"
-        f"STORE KNOWLEDGE\n{knowledge}"
+    # The context goes in the user turn, wrapped in tags, rather than in a
+    # second system message. Small models treat a lone system message as
+    # instructions and a second one as something to read out — the first
+    # version of this had a 1B model answering by reciting the headings back.
+    user_content = (
+        "<store_data>\n"
+        f"{snapshot}\n"
+        "</store_data>\n\n"
+        "<store_knowledge>\n"
+        f"{knowledge}\n"
+        "</store_knowledge>\n\n"
+        f"Question: {question}"
     )
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT.format(store=settings.store_name)},
-        {"role": "system", "content": context},
-    ]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT.format(store=settings.store_name)}]
     # Only the last few turns — enough to follow a "what about last month?"
     # without slowly filling the context window.
     messages += history[-6:]
-    messages.append({"role": "user", "content": question})
+    messages.append({"role": "user", "content": user_content})
 
     return messages, sources
 

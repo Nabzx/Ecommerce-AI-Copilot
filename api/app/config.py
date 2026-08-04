@@ -28,7 +28,10 @@ class Settings(BaseSettings):
     # works. Defaults point at a local Ollama so the project costs nothing.
     llm_base_url: str = "http://localhost:11434/v1"
     llm_api_key: str = "ollama"  # Ollama ignores this but clients expect something
-    llm_model: str = "llama3.2"
+    # 8B is about the floor for this. Smaller models read the figures out of
+    # the context correctly and then invent a comparison to wrap around them —
+    # "up 25% on last year" when the context only ever mentioned last week.
+    llm_model: str = "llama3.1"
     llm_vision_model: str = "llama3.2-vision"
     llm_embed_model: str = "nomic-embed-text"
 
