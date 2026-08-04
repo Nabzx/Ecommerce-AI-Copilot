@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import BestSellers from '@/components/BestSellers';
 import Card from '@/components/Card';
+import AlertsPanel from '@/components/AlertsPanel';
 import CopilotPanel from '@/components/CopilotPanel';
 import LowStockTable from '@/components/LowStockTable';
 import MetricCard from '@/components/MetricCard';
+import ProductSearch from '@/components/ProductSearch';
 import RevenueChart from '@/components/RevenueChart';
+import StockoutForecast from '@/components/StockoutForecast';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useCopilot } from '@/lib/useCopilot';
 import {
@@ -14,6 +17,7 @@ import {
   type CustomerStats,
   type LowStockRow,
   type RevenuePoint,
+  type Stockout,
   type Summary,
   type TopProduct,
 } from '@/lib/api';
@@ -28,6 +32,8 @@ export default function Dashboard() {
   const [top, setTop] = useState<TopProduct[]>([]);
   const [stock, setStock] = useState<LowStockRow[]>([]);
   const [customers, setCustomers] = useState<CustomerStats | null>(null);
+  // null until the forecast lands, so the card can say so.
+  const [stockouts, setStockouts] = useState<Stockout[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copilotOpen, setCopilotOpen] = useState(false);
@@ -52,6 +58,11 @@ export default function Dashboard() {
       setTop(t);
       setStock(l);
       setCustomers(c);
+
+      // Separate, and allowed to fail: the first call trains the model, and a
+      // fresh clone that hasn't been seeded yet has nothing to train on. The
+      // rest of the dashboard shouldn't go blank over that.
+      api.stockouts().then(setStockouts).catch(() => setStockouts([]));
     } catch {
       setError('Could not reach the API. Is the backend running on port 8000?');
     } finally {
@@ -125,6 +136,23 @@ export default function Dashboard() {
             </Card>
             <Card title="Best sellers" className="lg:col-span-2">
               <BestSellers data={top} />
+            </Card>
+          </div>
+
+          {/* forecast + search */}
+          <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-4 lg:grid-cols-2">
+            <Card title="Running out next" action={<span className="label">Forecast</span>}>
+              <StockoutForecast rows={stockouts} />
+            </Card>
+            <Card title="Search the catalogue" action={<span className="label">Semantic</span>}>
+              <ProductSearch />
+            </Card>
+          </div>
+
+          {/* alerts */}
+          <div className="mt-3 sm:mt-4">
+            <Card title="Alerts" action={<span className="label">Plain English</span>}>
+              <AlertsPanel />
             </Card>
           </div>
 
