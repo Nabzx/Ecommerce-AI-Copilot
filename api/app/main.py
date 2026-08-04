@@ -7,17 +7,19 @@ talks to nothing else.
     uvicorn app.main:app --reload
 """
 
+from datetime import datetime
+
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app import chat, forecast, metrics, rag, search
+from app import alerts, chat, forecast, metrics, rag, search
 from app.config import settings
 from app.db import create_tables, get_session
-from app.llm import llm
-from app.models import Product, Review, Variant
+from app.llm import LLMError, LLMUnavailable, llm
+from app.models import Alert, Product, Review, Variant
 from app.ratelimit import rate_limit
 
 app = FastAPI(
@@ -114,6 +116,61 @@ def get_stockouts(limit: int = Query(10, ge=1, le=60), session: Session = Depend
     except ValueError as exc:
         # No sales history yet — a fresh clone before the seeder has run.
         raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.get("/api/alerts")
+def list_alerts(session: Session = Depends(get_session)):
+    """Every rule, with whatever it's currently catching."""
+    return alerts.check_all(session)
+
+
+class AlertRequest(BaseModel):
+    phrase: str
+
+
+@app.post("/api/alerts", dependencies=[Depends(rate_limit)])
+async def create_alert(body: AlertRequest, session: Session = Depends(get_session)):
+    """Turn a sentence into a rule and save it."""
+    try:
+        rule = await alerts.parse_rule(body.phrase)
+    except LLMUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail="No model is responding, so rules can't be read. Start Ollama with `ollama serve`.",
+        )
+    except (LLMError, ValueError) as exc:
+        # The model answered, it just couldn't be turned into a rule.
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    alert = Alert(
+        phrase=body.phrase.strip(),
+        rule=rule.model_dump_json(),
+        created_at=datetime.now(),
+    )
+    session.add(alert)
+    session.commit()
+    session.refresh(alert)
+
+    hits = alerts.evaluate(session, rule)
+    return {
+        "id": alert.id,
+        "phrase": alert.phrase,
+        "rule": rule.model_dump(),
+        "reads_as": alerts.describe(rule),
+        "triggered": len(hits) > 0,
+        "count": len(hits),
+        "hits": hits[:6],
+    }
+
+
+@app.delete("/api/alerts/{alert_id}")
+def delete_alert(alert_id: int, session: Session = Depends(get_session)):
+    alert = session.get(Alert, alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="No such alert")
+    session.delete(alert)
+    session.commit()
+    return {"deleted": alert_id}
 
 
 @app.get("/api/forecast/accuracy")

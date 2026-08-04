@@ -102,6 +102,22 @@ class Chunk(SQLModel, table=True):
     embedding: bytes  # float32 array, packed
 
 
+class Alert(SQLModel, table=True):
+    """
+    A rule the owner typed in plain English.
+
+    Both halves are kept: `phrase` is what they actually wrote, so the
+    dashboard can show it back to them in their own words, and `rule` is the
+    structured version the evaluator runs.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    phrase: str
+    rule: str  # the parsed AlertRule, as JSON
+    created_at: datetime
+    active: bool = True
+
+
 class DailySales(SQLModel, table=True):
     """
     Units sold per variant per day.
