@@ -1,0 +1,9 @@
+# Optional — only needed for voice questions.
+#
+# Kept out of the main requirements because it pulls in ctranslate2 and
+# onnxruntime, which are a large download for a feature the rest of the
+# dashboard doesn't depend on. app/voice.py imports it lazily and says what to
+# install if it's missing, so everything else works without this.
+#
+#   pip install -r requirements-voice.txt
+faster-whisper==1.2.1

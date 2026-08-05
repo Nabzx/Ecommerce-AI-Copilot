@@ -5,11 +5,14 @@ import BestSellers from '@/components/BestSellers';
 import Card from '@/components/Card';
 import AlertsPanel from '@/components/AlertsPanel';
 import CopilotPanel from '@/components/CopilotPanel';
+import CopyStudio from '@/components/CopyStudio';
 import LowStockTable from '@/components/LowStockTable';
 import MetricCard from '@/components/MetricCard';
 import ProductSearch from '@/components/ProductSearch';
 import RevenueChart from '@/components/RevenueChart';
+import SentimentCard from '@/components/SentimentCard';
 import StockoutForecast from '@/components/StockoutForecast';
+import VisionTagger from '@/components/VisionTagger';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useCopilot } from '@/lib/useCopilot';
 import {
@@ -146,6 +149,23 @@ export default function Dashboard() {
             </Card>
             <Card title="Search the catalogue" action={<span className="label">Semantic</span>}>
               <ProductSearch />
+            </Card>
+          </div>
+
+          {/* what customers keep saying */}
+          <div className="mt-3 sm:mt-4">
+            <Card title="What customers keep saying" action={<span className="label">Sentiment</span>}>
+              <SentimentCard />
+            </Card>
+          </div>
+
+          {/* copy + tagging */}
+          <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-4 lg:grid-cols-2">
+            <Card title="Write copy" action={<span className="label">noszn tone</span>}>
+              <CopyStudio />
+            </Card>
+            <Card title="Tag a photo" action={<span className="label">Vision</span>}>
+              <VisionTagger />
             </Card>
           </div>
 
