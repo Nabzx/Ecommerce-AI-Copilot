@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app import alerts, chat, forecast, metrics, rag, search
+from app import alerts, chat, forecast, metrics, rag, search, sentiment
 from app.config import settings
 from app.db import create_tables, get_session
 from app.llm import LLMError, LLMUnavailable, llm
@@ -171,6 +171,30 @@ def delete_alert(alert_id: int, session: Session = Depends(get_session)):
     session.delete(alert)
     session.commit()
     return {"deleted": alert_id}
+
+
+@app.get("/api/reviews/insights")
+def get_review_insights(session: Session = Depends(get_session)):
+    """Sentiment split and the recurring themes behind it."""
+    return sentiment.insights(session)
+
+
+@app.post("/api/reviews/analyse", dependencies=[Depends(rate_limit)])
+async def analyse_reviews(
+    limit: int = Query(60, ge=1, le=500), session: Session = Depends(get_session)
+):
+    """Classify whatever hasn't been classified yet."""
+    try:
+        result = await sentiment.analyse(session, limit)
+    except LLMUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail="No model is responding. Start Ollama with `ollama serve`.",
+        )
+    except (LLMError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail=f"The model's reply couldn't be read: {exc}")
+
+    return {**result, **sentiment.insights(session)}
 
 
 @app.get("/api/forecast/accuracy")
