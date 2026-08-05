@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     llm_vision_model: str = "llama3.2-vision"
     llm_embed_model: str = "nomic-embed-text"
 
+    # --- voice ---
+    # Runs locally through faster-whisper. "base" is the sweet spot: small
+    # enough to download in seconds, good enough for a quiet room.
+    whisper_model: str = "base"
+    # Used only if faster-whisper isn't installed and the provider can do audio.
+    whisper_remote_model: str = "whisper-1"
+
     # How long we wait on the model, and how many times we retry a failure.
     llm_timeout_seconds: float = 60.0
     llm_max_retries: int = 2
