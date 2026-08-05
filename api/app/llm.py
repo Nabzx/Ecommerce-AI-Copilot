@@ -64,14 +64,14 @@ class LLMClient:
             headers={"Authorization": f"Bearer {self.api_key}"},
         )
 
-    async def _post(self, path: str, payload: dict) -> dict:
+    async def _post(self, path: str, payload: dict, timeout: float | None = None) -> dict:
         """POST with retries and a backoff, for the non-streaming calls."""
         last_error: Exception | None = None
 
         for attempt in range(self.max_retries + 1):
             try:
                 async with self._client() as client:
-                    response = await client.post(path, json=payload)
+                    response = await client.post(path, json=payload, timeout=timeout or self.timeout)
 
                 if response.status_code in RETRYABLE_STATUS:
                     last_error = LLMUnavailable(
@@ -100,8 +100,16 @@ class LLMClient:
         model: str | None = None,
         temperature: float = 0.3,
         max_tokens: int | None = None,
+        timeout: float | None = None,
     ) -> str:
-        """Ask for a whole answer in one go."""
+        """
+        Ask for a whole answer in one go.
+
+        `timeout` overrides the default for calls that are legitimately slow —
+        classifying a batch of reviews on a local model takes far longer than
+        answering a question, and killing it at 60 seconds isn't a failure
+        worth retrying.
+        """
         payload: dict = {
             "model": model or self.model,
             "messages": messages,
@@ -111,7 +119,7 @@ class LLMClient:
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
-        data = await self._post("/chat/completions", payload)
+        data = await self._post("/chat/completions", payload, timeout=timeout)
         try:
             return data["choices"][0]["message"]["content"] or ""
         except (KeyError, IndexError) as exc:
