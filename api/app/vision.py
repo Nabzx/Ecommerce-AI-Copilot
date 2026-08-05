@@ -18,17 +18,33 @@ from sqlmodel import Session, select
 from app.llm import llm
 from app.models import Product
 
-PROMPT = """Look at this piece of clothing and describe it for an online shop.
+# Two stages, deliberately.
+#
+# Small vision models see well and follow formatting instructions badly. Asked
+# for JSON, moondream replies "The image features a square-shaped object that
+# is black in colour" — a perfectly good description and nothing a parser can
+# use. So the vision model only has to look, and the text model, which is good
+# at structure, turns what it saw into fields.
+#
+# It also means the vision model can be tiny. moondream is under 2GB.
 
-Reply with JSON only, in this shape:
-{{"tags": ["...", "..."], "description": "...", "product_type": "...", "colour": "..."}}
+LOOK_PROMPT = """Describe this piece of clothing for an online shop.
 
-tags: 3 to 6 tags, chosen only from this list: {vocabulary}
+Say what type of garment it is, its main colour, the cut and shape, and any
+detail worth noting. Two or three sentences. Just describe what you can see."""
+
+STRUCTURE_PROMPT = """Here is a description of a clothing item:
+
+{description}
+
+Turn it into JSON and reply with nothing else:
+{{"tags": ["...", "..."], "product_type": "...", "colour": "...", "description": "..."}}
+
+tags: 3 to 6, chosen only from this list: {vocabulary}
 product_type: one of {types}
 colour: the main colour, one or two words
 description: two short lowercase lines, under 30 words, plain and understated.
-Say what it is and what it looks like. No marketing language.
-"""
+Say what it is and what it looks like. No marketing language."""
 
 
 def vocabulary(session: Session) -> tuple[list[str], list[str]]:
@@ -57,8 +73,24 @@ async def tag_image(session: Session, image_bytes: bytes) -> dict:
     """Tags and a description for one uploaded photo."""
     tags, types = vocabulary(session)
 
-    prompt = PROMPT.format(vocabulary=", ".join(tags), types=", ".join(types))
-    reply = await llm.describe_image(image_bytes, prompt)
+    # 1. the vision model looks
+    seen = (await llm.describe_image(image_bytes, LOOK_PROMPT)).strip()
+
+    # 2. the text model turns that into fields
+    reply = await llm.complete(
+        [
+            {
+                "role": "user",
+                "content": STRUCTURE_PROMPT.format(
+                    description=seen,
+                    vocabulary=", ".join(tags),
+                    types=", ".join(types),
+                ),
+            }
+        ],
+        temperature=0.0,
+        timeout=120.0,
+    )
     data = extract_object(reply)
 
     # Keep only tags the store actually uses, so the result is something you
@@ -75,6 +107,10 @@ async def tag_image(session: Session, image_bytes: bytes) -> dict:
         "product_type": product_type,
         "colour": str(data.get("colour", "")).lower()[:30],
         "description": str(data.get("description", "")).strip(),
+        # What the vision model actually saw, before it was turned into
+        # fields. Worth showing — if the tags look wrong, this is where you
+        # find out whether it misread the photo or just mislabelled it.
+        "seen": seen,
         # Worth surfacing: if the model suggested tags the shop has never used,
         # that's either a bad guess or a gap in the tagging.
         "rejected_tags": [
