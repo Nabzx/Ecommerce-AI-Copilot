@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import VoiceButton from '@/components/VoiceButton';
 import { useCopilot, type Message, type Source } from '@/lib/useCopilot';
 
 // The four things the owner actually asks, so an empty panel isn't a blank box.
@@ -26,6 +27,7 @@ export default function CopilotPanel({
 }) {
   const { messages, isStreaming, send, stop, reset } = copilot;
   const [draft, setDraft] = useState('');
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Follow the answer as it's written.
@@ -90,7 +92,17 @@ export default function CopilotPanel({
         }}
         className="border-t border-line p-3"
       >
+        {voiceError && <p className="mb-2 text-xs text-ink-muted">{voiceError}</p>}
         <div className="flex items-end gap-2">
+          {/* A spoken question goes straight in as if it had been typed. */}
+          <VoiceButton
+            disabled={isStreaming}
+            onTranscript={(text) => {
+              setVoiceError(null);
+              submit(text);
+            }}
+            onError={setVoiceError}
+          />
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -102,7 +114,7 @@ export default function CopilotPanel({
               }
             }}
             rows={1}
-            placeholder="Ask about the numbers or the shop…"
+            placeholder="Ask about the shop…"
             className="max-h-28 flex-1 resize-none bg-transparent py-2 text-sm text-ink outline-none placeholder:text-ink-faint"
           />
           {isStreaming ? (
