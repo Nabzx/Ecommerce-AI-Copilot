@@ -97,6 +97,32 @@ export interface AlertRow {
   hits: AlertHit[];
 }
 
+export interface ReviewInsights {
+  analysed: number;
+  total: number;
+  counts: { positive?: number; neutral?: number; negative?: number };
+  positive_themes: { theme: string; count: number }[];
+  negative_themes: { theme: string; count: number }[];
+  examples: { body: string; theme: string; rating: number; product: string }[];
+}
+
+export interface VisionTags {
+  tags: string[];
+  product_type: string;
+  colour: string;
+  description: string;
+  seen: string;
+  rejected_tags: string[];
+}
+
+export interface ProductSummary {
+  id: number;
+  title: string;
+  product_type: string;
+  price: number;
+  in_stock: number;
+}
+
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, { cache: 'no-store' });
   if (!response.ok) {
@@ -144,5 +170,39 @@ export const api = {
 
   async deleteAlert(id: number): Promise<void> {
     await fetch(`${API_BASE}/api/alerts/${id}`, { method: 'DELETE' });
+  },
+
+  products: () => get<ProductSummary[]>('/api/products'),
+  reviewInsights: () => get<ReviewInsights>('/api/reviews/insights'),
+
+  async analyseReviews(): Promise<ReviewInsights> {
+    const response = await fetch(`${API_BASE}/api/reviews/analyse?limit=500`, { method: 'POST' });
+    if (!response.ok) {
+      throw new Error(await detail(response, `The server answered ${response.status}.`));
+    }
+    return response.json();
+  },
+
+  async tagImage(file: File): Promise<VisionTags> {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await fetch(`${API_BASE}/api/vision/tag`, { method: 'POST', body: form });
+    if (!response.ok) {
+      throw new Error(await detail(response, `The server answered ${response.status}.`));
+    }
+    return response.json();
+  },
+
+  async transcribe(audio: Blob): Promise<string> {
+    const form = new FormData();
+    form.append('file', audio, 'question.webm');
+    const response = await fetch(`${API_BASE}/api/voice/transcribe`, {
+      method: 'POST',
+      body: form,
+    });
+    if (!response.ok) {
+      throw new Error(await detail(response, `The server answered ${response.status}.`));
+    }
+    return (await response.json()).text as string;
   },
 };
