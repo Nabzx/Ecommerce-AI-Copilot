@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { API_BASE } from '@/lib/api';
+import { readSSE } from '@/lib/sse';
 
 export interface Source {
   n: number;
@@ -72,42 +73,15 @@ export function useCopilot() {
           return;
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Frames are separated by a blank line. Anything after the last one
-          // is a partial frame, so it stays in the buffer for the next read.
-          const frames = buffer.split('\n\n');
-          buffer = frames.pop() ?? '';
-
-          for (const frame of frames) {
-            const line = frame.trim();
-            if (!line.startsWith('data:')) continue;
-
-            const payload = line.slice(5).trim();
-            if (payload === '[DONE]') continue;
-
-            try {
-              const event = JSON.parse(payload);
-              if (event.type === 'token') {
-                updateLast((m) => ({ ...m, content: m.content + event.text }));
-              } else if (event.type === 'sources') {
-                updateLast((m) => ({ ...m, sources: event.sources }));
-              } else if (event.type === 'error') {
-                updateLast((m) => ({ ...m, error: event.message }));
-              }
-            } catch {
-              // A malformed frame shouldn't kill the rest of the answer.
-            }
+        await readSSE(response.body, (event) => {
+          if (event.type === 'token') {
+            updateLast((m) => ({ ...m, content: m.content + (event.text ?? '') }));
+          } else if (event.type === 'sources') {
+            updateLast((m) => ({ ...m, sources: event.sources as Source[] }));
+          } else if (event.type === 'error') {
+            updateLast((m) => ({ ...m, error: event.message }));
           }
-        }
+        });
       } catch (err) {
         // An abort is the user pressing stop, not a failure.
         if ((err as Error).name !== 'AbortError') {
