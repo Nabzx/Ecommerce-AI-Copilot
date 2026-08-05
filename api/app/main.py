@@ -7,15 +7,16 @@ talks to nothing else.
     uvicorn app.main:app --reload
 """
 
+import json
 from datetime import datetime
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app import alerts, chat, forecast, metrics, rag, search, sentiment
+from app import alerts, chat, copywriter, forecast, metrics, rag, search, sentiment, vision, voice
 from app.config import settings
 from app.db import create_tables, get_session
 from app.llm import LLMError, LLMUnavailable, llm
@@ -195,6 +196,89 @@ async def analyse_reviews(
         raise HTTPException(status_code=502, detail=f"The model's reply couldn't be read: {exc}")
 
     return {**result, **sentiment.insights(session)}
+
+
+# --- copy generation ---
+
+def sse_stream(pieces):
+    """Wrap a token generator in the same SSE shape the copilot uses."""
+    async def generate():
+        try:
+            async for piece in pieces:
+                yield f"data: {json.dumps({'type': 'token', 'text': piece})}\n\n"
+        except LLMUnavailable:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'No model is responding. Start Ollama with `ollama serve`.'})}\n\n"
+        except LLMError as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/api/copy/description/{product_id}", dependencies=[Depends(rate_limit)])
+def write_description(product_id: int, session: Session = Depends(get_session)):
+    """A product description in noszn's voice, streamed."""
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="No such product")
+    return sse_stream(copywriter.stream_description(session, product))
+
+
+@app.post("/api/copy/winback", dependencies=[Depends(rate_limit)])
+def write_winback(
+    days_since: int = Query(60, ge=7, le=365), session: Session = Depends(get_session)
+):
+    """A win-back email for customers who haven't ordered in a while."""
+    return sse_stream(copywriter.stream_winback(session, days_since))
+
+
+# --- vision tagging ---
+
+@app.post("/api/vision/tag", dependencies=[Depends(rate_limit)])
+async def tag_product_image(
+    file: UploadFile = File(...), session: Session = Depends(get_session)
+):
+    """Turn a product photo into tags and a short description."""
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(status_code=415, detail="That doesn't look like an image.")
+
+    image_bytes = await file.read()
+    if len(image_bytes) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Image is too big — keep it under 8MB.")
+
+    try:
+        return await vision.tag_image(session, image_bytes)
+    except LLMUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"No vision model responding. Pull one with "
+                f"`ollama pull {settings.llm_vision_model}`."
+            ),
+        )
+    except (LLMError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail=f"Couldn't read the reply: {exc}")
+
+
+# --- voice ---
+
+@app.post("/api/voice/transcribe", dependencies=[Depends(rate_limit)])
+async def transcribe_audio(file: UploadFile = File(...)):
+    """Recorded audio in, text out. The text then goes through /api/chat."""
+    audio = await file.read()
+    if not audio:
+        raise HTTPException(status_code=400, detail="Empty recording.")
+
+    try:
+        return await voice.transcribe(audio, file.filename or "audio.webm")
+    except voice.NoTranscriber as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not transcribe that: {exc}")
 
 
 @app.get("/api/forecast/accuracy")
