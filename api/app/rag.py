@@ -196,12 +196,13 @@ async def build_index() -> dict:
 
         # strict: a mismatch here would silently pair documents with the
         # wrong vectors, which is exactly the bug that is hardest to notice.
-        for doc, vector in zip(documents, vectors, strict=True):
+        for doc, text, vector in zip(documents, texts, vectors, strict=True):
             session.add(
                 Chunk(
                     source=doc["source"],
                     title=doc["title"],
                     text=doc["text"],
+                    embed_text=text,
                     ref_id=doc.get("ref_id"),
                     embedder=embedder.name,
                     dim=len(vector),
@@ -225,8 +226,11 @@ async def get_query_embedder(session: Session):
 
     if stored == "tfidf":
         embedder = vectorstore.TfidfEmbedder()
-        corpus = session.exec(select(Chunk.text)).all()
-        embedder.fit(list(corpus))
+        # Must be embed_text, not text. Fitting on anything else gives a
+        # different vocabulary, so the query vector comes out a different
+        # length to the stored ones and the multiply fails outright.
+        corpus = session.exec(select(Chunk.embed_text)).all()
+        embedder.fit([c for c in corpus if c])
         return embedder
 
     return vectorstore.ModelEmbedder()

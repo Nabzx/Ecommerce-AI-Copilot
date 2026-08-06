@@ -92,7 +92,12 @@ class Chunk(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     source: str = Field(index=True)  # "shipping.md" or "catalogue"
     title: str  # "Shipping › Drops" — shown as the citation
-    text: str
+    text: str  # what the copilot reads
+    # What was actually embedded, which isn't always the same as `text`. The
+    # TF-IDF fallback has to refit on this exact corpus to embed a query — fit
+    # it on anything else and the vocabulary differs, so the query vector comes
+    # out a different length to the stored ones and nothing matches at all.
+    embed_text: str = ""
     # For catalogue chunks, the product this describes. Lets semantic search
     # get back to a real row instead of matching on the title string.
     ref_id: int | None = Field(default=None, index=True)

@@ -11,6 +11,8 @@ Neither needs a model. The embedder is faked so the test controls the ranking
 and checks what retrieval does with it.
 """
 
+import asyncio
+
 import numpy as np
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
@@ -163,6 +165,34 @@ async def test_results_come_back_best_first(session, monkeypatch):
 @pytest.mark.asyncio
 async def test_an_empty_index_returns_nothing_rather_than_failing(session):
     assert await rag.retrieve(session, "anything") == []
+
+
+def test_the_offline_fallback_embeds_queries_the_same_size_as_documents():
+    """
+    The zero-setup path, which is the one nobody notices is broken.
+
+    TF-IDF has no fixed dimension — it's however big the vocabulary of the
+    corpus it was fitted on happens to be. Fit the query-side vectorizer on
+    different text to the document side and the vectors come out different
+    lengths, so the similarity multiply fails outright. That's exactly what
+    happened: the index was built from embed_text and queries were being
+    fitted on text, 923 dimensions against 913.
+    """
+    corpus = [
+        "Core Hoodie — Black. A hoodie. Heavyweight and warm.",
+        "Boxy Tee — White. A tee. Lightweight and breathable.",
+        "Returns and exchanges. 30 days from delivery, unworn with tags on.",
+    ]
+
+    embedder = vectorstore.TfidfEmbedder()
+    embedder.fit(corpus)
+
+    documents = asyncio.run(embedder.embed(corpus))
+    query = asyncio.run(embedder.embed(["something warm"], kind="query"))
+
+    assert documents.shape[1] == query.shape[1]
+    # And the multiply that retrieval does actually works.
+    assert (documents @ query[0]).shape == (len(corpus),)
 
 
 def test_search_drops_results_below_the_floor():
