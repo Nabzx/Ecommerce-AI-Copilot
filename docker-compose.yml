@@ -1,0 +1,51 @@
+# StoreSense, running end to end.
+#
+#   docker compose up --build
+#   docker compose run --rm seed      # synthetic data + search index
+#
+# Then open http://localhost:3000.
+#
+# The AI features need a model. Ollama runs on the host rather than in here —
+# in a container it can't reach the Mac's GPU, and on CPU the copilot goes
+# from a few seconds to a minute. host.docker.internal points at it.
+
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////data/storesense.db
+      LLM_BASE_URL: http://host.docker.internal:11434/v1
+    volumes:
+      - store-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  web:
+    build:
+      context: ./web
+      args:
+        # The browser makes this call, not the container, so it's localhost
+        # from the user's machine rather than the compose service name.
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  # One-shot: fills the database and builds the search index, then exits.
+  seed:
+    build: ./api
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: sqlite:////data/storesense.db
+      LLM_BASE_URL: http://host.docker.internal:11434/v1
+    volumes:
+      - store-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: sh -c "python -m app.seed && python -m app.rag"
+
+volumes:
+  store-data:
