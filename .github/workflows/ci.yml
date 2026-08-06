@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: API — lint and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install
+        working-directory: api
+        run: |
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Lint
+        working-directory: api
+        run: ruff check app tests
+
+      - name: Tests
+        working-directory: api
+        # Nothing here needs a model or the network — the gateway tests use a
+        # fake transport and retrieval uses a fake embedder.
+        run: python -m pytest
+
+  web:
+    name: Dashboard — lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        working-directory: web
+        run: npm ci
+
+      - name: Lint
+        working-directory: web
+        run: npm run lint
+
+      - name: Build
+        working-directory: web
+        # Type errors fail the build, so this covers typechecking too.
+        run: npm run build
