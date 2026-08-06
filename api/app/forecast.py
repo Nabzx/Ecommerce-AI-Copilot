@@ -258,7 +258,7 @@ def _model_rates(
     # Demand can't be negative, whatever the regressor says.
     totals = np.maximum(0.0, model.predict(batch))
 
-    return {vid: float(total) / FORWARD_WINDOW for vid, total in zip(variant_ids, totals)}
+    return {vid: float(total) / FORWARD_WINDOW for vid, total in zip(variant_ids, totals, strict=True)}
 
 
 def _score_fold(

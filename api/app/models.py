@@ -6,15 +6,14 @@ The shapes deliberately mirror what the Shopify Admin API gives back
 real Shopify sync can write to exactly the same tables.
 """
 
-from datetime import datetime, date
-from typing import Optional
+from datetime import date, datetime
 
 from sqlmodel import Field, SQLModel
 
 
 class Product(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    shopify_id: Optional[str] = Field(default=None, index=True)
+    id: int | None = Field(default=None, primary_key=True)
+    shopify_id: str | None = Field(default=None, index=True)
     title: str
     handle: str = Field(index=True)
     product_type: str  # hoodie, tee, cargos ...
@@ -29,7 +28,7 @@ class Product(SQLModel, table=True):
 class Variant(SQLModel, table=True):
     """A size of a product. Stock lives here, not on the product."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     product_id: int = Field(foreign_key="product.id", index=True)
     title: str  # "M", "L", "One Size"
     sku: str
@@ -40,8 +39,8 @@ class Variant(SQLModel, table=True):
 class Customer(SQLModel, table=True):
     """PII is never real. The seeder makes fake names and hashed-looking emails."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    shopify_id: Optional[str] = Field(default=None, index=True)
+    id: int | None = Field(default=None, primary_key=True)
+    shopify_id: str | None = Field(default=None, index=True)
     name: str
     email: str
     created_at: datetime
@@ -49,8 +48,8 @@ class Customer(SQLModel, table=True):
 
 
 class Order(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    shopify_id: Optional[str] = Field(default=None, index=True)
+    id: int | None = Field(default=None, primary_key=True)
+    shopify_id: str | None = Field(default=None, index=True)
     customer_id: int = Field(foreign_key="customer.id", index=True)
     created_at: datetime = Field(index=True)
     total_price: float
@@ -60,7 +59,7 @@ class Order(SQLModel, table=True):
 class OrderLine(SQLModel, table=True):
     """One line of an order: which variant, how many, at what price."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     order_id: int = Field(foreign_key="order.id", index=True)
     product_id: int = Field(foreign_key="product.id", index=True)
     variant_id: int = Field(foreign_key="variant.id", index=True)
@@ -71,14 +70,14 @@ class OrderLine(SQLModel, table=True):
 class Review(SQLModel, table=True):
     """Customer reviews. `sentiment` starts empty and the AI fills it in."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     product_id: int = Field(foreign_key="product.id", index=True)
     customer_name: str
     rating: int  # 1-5
     body: str
     created_at: datetime
-    sentiment: Optional[str] = Field(default=None, index=True)  # positive/neutral/negative
-    theme: Optional[str] = None  # e.g. "sizing", "shipping speed"
+    sentiment: str | None = Field(default=None, index=True)  # positive/neutral/negative
+    theme: str | None = None  # e.g. "sizing", "shipping speed"
 
 
 class Chunk(SQLModel, table=True):
@@ -90,13 +89,13 @@ class Chunk(SQLModel, table=True):
     confident nonsense rather than an obvious error.
     """
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     source: str = Field(index=True)  # "shipping.md" or "catalogue"
     title: str  # "Shipping › Drops" — shown as the citation
     text: str
     # For catalogue chunks, the product this describes. Lets semantic search
     # get back to a real row instead of matching on the title string.
-    ref_id: Optional[int] = Field(default=None, index=True)
+    ref_id: int | None = Field(default=None, index=True)
     embedder: str  # "model:nomic-embed-text" or "tfidf"
     dim: int
     embedding: bytes  # float32 array, packed
@@ -111,7 +110,7 @@ class Alert(SQLModel, table=True):
     structured version the evaluator runs.
     """
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     phrase: str
     rule: str  # the parsed AlertRule, as JSON
     created_at: datetime
@@ -127,7 +126,7 @@ class DailySales(SQLModel, table=True):
     once at seed time keeps the forecast endpoint fast and simple.
     """
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     variant_id: int = Field(foreign_key="variant.id", index=True)
     day: date = Field(index=True)
     units: int

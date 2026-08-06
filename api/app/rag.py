@@ -18,7 +18,7 @@ import numpy as np
 from sqlmodel import Session, select
 
 from app import vectorstore
-from app.db import engine, create_tables
+from app.db import create_tables, engine
 from app.models import Chunk, Product, Variant
 
 KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
@@ -194,7 +194,9 @@ async def build_index() -> dict:
         Chunk.__table__.drop(engine, checkfirst=True)
         Chunk.__table__.create(engine)
 
-        for doc, vector in zip(documents, vectors):
+        # strict: a mismatch here would silently pair documents with the
+        # wrong vectors, which is exactly the bug that is hardest to notice.
+        for doc, vector in zip(documents, vectors, strict=True):
             session.add(
                 Chunk(
                     source=doc["source"],

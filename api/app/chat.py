@@ -17,7 +17,7 @@ faster, and works with the small local models this is meant to run on.
 """
 
 import json
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from sqlmodel import Session
 

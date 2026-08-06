@@ -12,8 +12,8 @@ explicitly, because telling a model to "be minimal" does not survive contact
 with its training data.
 """
 
+from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
-from typing import AsyncIterator
 
 from sqlmodel import Session, func, select
 

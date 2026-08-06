@@ -1,6 +1,6 @@
 """Database engine and session helpers."""
 
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import settings
 

@@ -1,0 +1,29 @@
+# Explicit, so lint results are the same here and in CI.
+#
+# Without this ruff walks up the filesystem looking for a config and can find
+# one outside the repo entirely, which means the checks depend on whose laptop
+# they run on.
+
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes — the real bug catchers
+    "W",   # whitespace
+    "I",   # import order
+    "UP",  # syntax that's out of date for this Python
+    "B",   # bugbear — common footguns
+]
+
+ignore = [
+    "E501",  # line length is handled by the formatter, not worth failing on
+    "B008",  # Depends() in a default argument is how FastAPI is written
+    "B904",  # see the note at the bottom of this file
+]
+
+# B904 asks for `raise ... from exc` everywhere. In the FastAPI handlers the
+# whole job is turning an internal exception into an HTTP response with a
+# message written for the person reading it, and the original traceback is
+# still in the server log either way. Not worth thirteen `from exc` clauses.

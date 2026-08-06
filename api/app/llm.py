@@ -13,7 +13,7 @@ at a local Ollama, so the project runs for free with no account anywhere.
 import asyncio
 import base64
 import json
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import httpx
 

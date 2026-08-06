@@ -13,13 +13,13 @@ possible to reject a bad parse instead of storing something that half works.
 
 import json
 from datetime import datetime, timedelta
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 from sqlmodel import Session, select
 
 from app import metrics
-from app.llm import LLMError, llm
+from app.llm import llm
 from app.models import Alert, DailySales, Product, Variant
 
 
@@ -39,7 +39,7 @@ class AlertRule(BaseModel):
     # Whether the rule is about one size at a time or the whole shop.
     scope: Literal["variant", "store"]
     # Optional filter, e.g. only hoodies. Matched against the product title.
-    product_contains: Optional[str] = Field(default=None)
+    product_contains: str | None = Field(default=None)
 
 
 STORE_METRICS = {"revenue_7d", "aov", "repeat_rate"}

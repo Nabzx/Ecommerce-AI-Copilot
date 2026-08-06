@@ -16,9 +16,9 @@ genuine patterns to find rather than random noise.
 import random
 from datetime import datetime, timedelta
 
-from sqlmodel import Session, SQLModel, delete
+from sqlmodel import Session, delete
 
-from app.db import engine, create_tables
+from app.db import create_tables, engine
 from app.models import (
     Customer,
     DailySales,
