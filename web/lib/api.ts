@@ -5,6 +5,8 @@
  * endpoint shows up as a TypeScript error rather than a blank card.
  */
 
+import { authHeaders, clearToken } from '@/lib/auth';
+
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 export interface Summary {
@@ -123,8 +125,25 @@ export interface ProductSummary {
   in_stock: number;
 }
 
+/**
+ * A 401 means the token expired or was never there. Clearing it is what makes
+ * the page fall back to the login screen on the next render, rather than
+ * showing a dashboard full of failed requests.
+ */
+function handleUnauthorised() {
+  clearToken();
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('storesense-signed-out'));
+}
+
 async function get<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, { cache: 'no-store' });
+  const response = await fetch(`${API_BASE}${path}`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  if (response.status === 401) {
+    handleUnauthorised();
+    throw new Error('Signed out.');
+  }
   if (!response.ok) {
     throw new Error(`${path} returned ${response.status}`);
   }
@@ -159,7 +178,7 @@ export const api = {
   async createAlert(phrase: string): Promise<AlertRow> {
     const response = await fetch(`${API_BASE}/api/alerts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ phrase }),
     });
     if (!response.ok) {
@@ -169,14 +188,17 @@ export const api = {
   },
 
   async deleteAlert(id: number): Promise<void> {
-    await fetch(`${API_BASE}/api/alerts/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE}/api/alerts/${id}`, { method: 'DELETE', headers: authHeaders() });
   },
 
   products: () => get<ProductSummary[]>('/api/products'),
   reviewInsights: () => get<ReviewInsights>('/api/reviews/insights'),
 
   async analyseReviews(): Promise<ReviewInsights> {
-    const response = await fetch(`${API_BASE}/api/reviews/analyse?limit=500`, { method: 'POST' });
+    const response = await fetch(`${API_BASE}/api/reviews/analyse?limit=500`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
     if (!response.ok) {
       throw new Error(await detail(response, `The server answered ${response.status}.`));
     }
@@ -186,7 +208,11 @@ export const api = {
   async tagImage(file: File): Promise<VisionTags> {
     const form = new FormData();
     form.append('file', file);
-    const response = await fetch(`${API_BASE}/api/vision/tag`, { method: 'POST', body: form });
+    const response = await fetch(`${API_BASE}/api/vision/tag`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: form,
+    });
     if (!response.ok) {
       throw new Error(await detail(response, `The server answered ${response.status}.`));
     }
@@ -198,6 +224,7 @@ export const api = {
     form.append('file', audio, 'question.webm');
     const response = await fetch(`${API_BASE}/api/voice/transcribe`, {
       method: 'POST',
+      headers: authHeaders(),
       body: form,
     });
     if (!response.ok) {

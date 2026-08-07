@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { API_BASE } from '@/lib/api';
+import { authHeaders } from '@/lib/auth';
 import { readSSE } from '@/lib/sse';
 
 export interface Source {
@@ -59,7 +60,7 @@ export function useCopilot() {
       try {
         const response = await fetch(`${API_BASE}/api/chat`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
           body: JSON.stringify({ message: question, history }),
           signal: controller.signal,
         });

@@ -11,9 +11,11 @@ import MetricCard from '@/components/MetricCard';
 import ProductSearch from '@/components/ProductSearch';
 import RevenueChart from '@/components/RevenueChart';
 import SentimentCard from '@/components/SentimentCard';
+import SignIn from '@/components/SignIn';
 import StockoutForecast from '@/components/StockoutForecast';
 import VisionTagger from '@/components/VisionTagger';
 import ThemeToggle from '@/components/ThemeToggle';
+import { clearToken, getHealth, getToken } from '@/lib/auth';
 import { useCopilot } from '@/lib/useCopilot';
 import {
   api,
@@ -40,6 +42,8 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copilotOpen, setCopilotOpen] = useState(false);
+  // null while we're still asking the API whether a password is needed.
+  const [needsSignIn, setNeedsSignIn] = useState<boolean | null>(null);
 
   // Owned here so the side rail and the phone sheet share one conversation.
   const copilot = useCopilot();
@@ -73,13 +77,40 @@ export default function Dashboard() {
     }
   }, [days]);
 
+  // Ask the API whether it wants a password before loading anything, so a
+  // protected instance shows the door rather than a wall of failed requests.
   useEffect(() => {
-    load();
-  }, [load]);
+    let live = true;
+    getHealth()
+      .then((health) => live && setNeedsSignIn(health.auth_required && !getToken()))
+      // If the API is unreachable, let the dashboard render and report that
+      // itself — a sign-in box wouldn't help and would hide the real problem.
+      .catch(() => live && setNeedsSignIn(false));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Any request that comes back 401 clears the token and says so.
+  useEffect(() => {
+    const signedOut = () => setNeedsSignIn(true);
+    window.addEventListener('storesense-signed-out', signedOut);
+    return () => window.removeEventListener('storesense-signed-out', signedOut);
+  }, []);
+
+  useEffect(() => {
+    if (needsSignIn === false) load();
+  }, [load, needsSignIn]);
+
+  if (needsSignIn === null) return null; // one frame, not worth a spinner
+
+  if (needsSignIn) {
+    return <SignIn onSignedIn={() => setNeedsSignIn(false)} />;
+  }
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1440px] px-4 pb-20 sm:px-6">
-      <Header days={days} onDaysChange={setDays} />
+      <Header days={days} onDaysChange={setDays} onSignOut={() => { clearToken(); setNeedsSignIn(true); }} />
 
       <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start xl:gap-4">
         <div>
@@ -232,7 +263,15 @@ export default function Dashboard() {
   );
 }
 
-function Header({ days, onDaysChange }: { days: number; onDaysChange: (d: number) => void }) {
+function Header({
+  days,
+  onDaysChange,
+  onSignOut,
+}: {
+  days: number;
+  onDaysChange: (d: number) => void;
+  onSignOut: () => void;
+}) {
   return (
     <header className="sticky top-0 z-10 -mx-4 mb-4 border-b border-line bg-canvas/85 px-4 py-4 backdrop-blur sm:-mx-6 sm:mb-6 sm:px-6 sm:py-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -259,6 +298,15 @@ function Header({ days, onDaysChange }: { days: number; onDaysChange: (d: number
             ))}
           </div>
           <ThemeToggle />
+          {/* Only worth showing when there was something to sign into. */}
+          {getToken() && (
+            <button
+              onClick={onSignOut}
+              className="text-xs text-ink-faint transition-colors hover:text-ink"
+            >
+              Sign out
+            </button>
+          )}
         </div>
       </div>
     </header>

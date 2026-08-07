@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { API_BASE, api, type ProductSummary } from '@/lib/api';
+import { authHeaders } from '@/lib/auth';
 import { readSSE } from '@/lib/sse';
 
 /**
@@ -35,7 +36,10 @@ export default function CopyStudio() {
     setCopied(false);
 
     try {
-      const response = await fetch(`${API_BASE}${path}`, { method: 'POST' });
+      const response = await fetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
       if (!response.ok || !response.body) {
         setError(`The server answered ${response.status}.`);
         return;
