@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     llm_vision_model: str = "llama3.2-vision"
     llm_embed_model: str = "nomic-embed-text"
 
+    # --- login ---
+    # Leave blank and the dashboard is open, which is what you want locally.
+    # Set it before deploying: without it, anyone who finds the URL can run up
+    # your LLM bill.
+    app_password: str = ""
+    # Signs session tokens. Blank means a new one each boot, so restarts log
+    # everyone out — fine locally, set it in production.
+    session_secret: str = ""
+
     # --- voice ---
     # Runs locally through faster-whisper. "base" is the sweet spot: small
     # enough to download in seconds, good enough for a quiet room.
