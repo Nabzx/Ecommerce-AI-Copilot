@@ -10,18 +10,30 @@ talks to nothing else.
 import json
 from datetime import datetime
 
-from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app import alerts, chat, copywriter, forecast, metrics, rag, search, sentiment, vision, voice
+from app import (
+    alerts,
+    auth,
+    chat,
+    copywriter,
+    forecast,
+    metrics,
+    rag,
+    search,
+    sentiment,
+    vision,
+    voice,
+)
 from app.config import settings
 from app.db import create_tables, get_session
 from app.llm import LLMError, LLMUnavailable, llm
 from app.models import Alert, Product, Review, Variant
-from app.ratelimit import rate_limit
+from app.ratelimit import RateLimiter, rate_limit
 
 app = FastAPI(
     title="StoreSense API",
@@ -29,11 +41,43 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# The dashboard runs on its own port in dev, so it needs CORS. The regex covers
-# localhost on any port rather than hardcoding 3000, which saves a confusing
-# afternoon when something else has already taken it.
+# Reachable without signing in: the health check (the dashboard asks it whether
+# a password is even needed) and the login endpoint itself.
+PUBLIC_PATHS = {"/health", "/api/login", "/docs", "/openapi.json", "/redoc"}
+
+
+@app.middleware("http")
+async def require_login(request, call_next):
+    """
+    One gate in front of everything, rather than a dependency on twenty routes
+    — easy to read, and impossible to forget on a route added later.
+    """
+    if not auth.enabled() or request.url.path in PUBLIC_PATHS:
+        return await call_next(request)
+
+    # CORS preflight carries no headers to check, and blocking it means the
+    # browser never sends the real request at all.
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
+    if not auth.valid_token(auth.bearer_token(request)):
+        return JSONResponse(status_code=401, content={"detail": "Sign in to use this."})
+
+    return await call_next(request)
+
+
+# Added last on purpose, which makes it the outermost middleware.
+#
+# Starlette applies these in reverse, so whatever is registered last wraps
+# everything before it. With CORS registered first, the 401 above was returned
+# without any Access-Control-Allow-Origin header — the browser then blocked it
+# as a CORS failure, fetch threw, and the dashboard reported "could not reach
+# the API" for what was really an expired token. Wrapping the auth check means
+# even a rejection comes back with the headers that let the browser read it.
 app.add_middleware(
     CORSMiddleware,
+    # The regex covers localhost on any port rather than hardcoding 3000, which
+    # saves a confusing afternoon when something else has already taken it.
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
@@ -46,14 +90,48 @@ def on_startup() -> None:
     # Makes a fresh clone work — tables exist even before the seeder runs.
     create_tables()
 
+    if not auth.enabled():
+        print(
+            "\n  StoreSense is running with no password. Fine on your laptop.\n"
+            "  Set APP_PASSWORD before putting this anywhere public.\n"
+        )
+
+
+class LoginRequest(BaseModel):
+    password: str
+
+
+# Much tighter than the usual limit — this is the one endpoint where the
+# requests are guesses.
+login_limiter = RateLimiter(limit=5, window_seconds=60)
+
+
+@app.post("/api/login")
+def login(body: LoginRequest, request: Request):
+    """Swap the shared password for a token that lasts a day."""
+    caller = request.client.host if request.client else "unknown"
+    login_limiter.check(caller)
+
+    if not auth.enabled():
+        # Nothing to log into, but answering with a token keeps the frontend
+        # from needing a second code path.
+        return {"token": auth.make_token(), "auth_required": False}
+
+    if not auth.check_password(body.password):
+        raise HTTPException(status_code=401, detail="That password isn't right.")
+
+    return {"token": auth.make_token(), "auth_required": True}
+
 
 @app.get("/health")
 async def health() -> dict:
-    # Reports whether a model is reachable so the UI can say something useful
-    # instead of just failing when someone tries the copilot.
+    # Reports whether a model is reachable, so the UI can say something useful
+    # instead of just failing when someone tries the copilot, and whether a
+    # password is needed, so it knows to ask for one.
     return {
         "status": "ok",
         "store": settings.store_name,
+        "auth_required": auth.enabled(),
         "model_available": await llm.available(),
         "model": settings.llm_model,
     }
