@@ -109,7 +109,10 @@ they arrive.
 - **Voice** — Whisper locally, feeding the same chat path as typing.
 - **Semantic search** over the catalogue.
 - **Sentiment with a closed theme vocabulary**, so the counts actually add up.
-- **Tests and CI** on the gateway and retrieval, both without touching a model.
+- **Tests and CI** on the gateway, retrieval and login, none of which touch a model.
+- **A shared-password login** — off by default so a fresh clone just runs, on
+  the moment you set `APP_PASSWORD`. Signed tokens, constant-time comparison,
+  and a much tighter rate limit on the one endpoint where requests are guesses.
 
 ### On the forecast
 

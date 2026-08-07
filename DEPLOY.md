@@ -25,12 +25,18 @@ the Dockerfile.
 Environment:
 
 ```
+APP_PASSWORD      = something only you and your friend know
+SESSION_SECRET    = any long random string
 DATABASE_URL      = the Neon string
 LLM_BASE_URL      = https://api.openai.com/v1     (or another provider)
 LLM_API_KEY       = your key
 LLM_MODEL         = gpt-4o-mini                   (or similar)
 LLM_EMBED_MODEL   = text-embedding-3-small
 ```
+
+**Set `APP_PASSWORD`.** Without it every endpoint is open, and the expensive
+ones are the AI ones. The API prints a warning at startup when it's missing,
+and `/health` reports it.
 
 Ollama is a local tool — nothing on the internet can reach the one on your
 laptop, so a deployed instance needs a hosted provider. The gateway speaks the
