@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 
 from sqlmodel import Session, delete
 
+from app import datasource
 from app.db import create_tables, engine
 from app.models import (
     Customer,
@@ -368,6 +369,18 @@ def seed() -> None:
         session.commit()
 
         kept_orders = len(order_rows) - len(empty_ids)
+
+        # So the dashboard can say this is demo data rather than his shop.
+        datasource.record(
+            session,
+            datasource.DEMO,
+            products=len(products),
+            variants=len(variants),
+            orders=kept_orders,
+            customers=len(customers),
+            history_days=DAYS_OF_HISTORY,
+        )
+
         revenue = sum(o.total_price for o in order_rows if o.id not in empty_ids)
         print(f"seeded {len(products)} products / {len(variants)} variants")
         print(f"        {kept_orders} orders, {len(line_rows)} lines, £{revenue:,.0f} revenue")

@@ -106,6 +106,29 @@ class Chunk(SQLModel, table=True):
     embedding: bytes  # float32 array, packed
 
 
+class SyncState(SQLModel, table=True):
+    """
+    What filled this database, and when.
+
+    One row, replaced each time. Without it there's no way to tell a demo from
+    a real store by looking at the dashboard, and "is this my actual data?" is
+    the first thing anyone asks.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    source: str  # "demo" or "shopify"
+    store_domain: str = ""
+    synced_at: datetime
+    products: int = 0
+    variants: int = 0
+    orders: int = 0
+    customers: int = 0
+    history_days: int = 0
+    # Set when the sync finished but something was off — e.g. no cost data, so
+    # margin will read as 100%. Shown in the UI rather than buried in a log.
+    note: str = ""
+
+
 class Alert(SQLModel, table=True):
     """
     A rule the owner typed in plain English.
