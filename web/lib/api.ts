@@ -117,6 +117,27 @@ export interface VisionTags {
   rejected_tags: string[];
 }
 
+export interface DataSource {
+  source: string;
+  is_demo: boolean;
+  store_domain?: string;
+  synced_at: string | null;
+  products?: number;
+  orders?: number;
+  customers?: number;
+  note?: string;
+}
+
+export interface Health {
+  status: string;
+  store: string;
+  auth_required: boolean;
+  model_available: boolean;
+  model: string;
+  shopify_configured: boolean;
+  data: DataSource;
+}
+
 export interface ProductSummary {
   id: number;
   title: string;
@@ -192,6 +213,21 @@ export const api = {
   },
 
   products: () => get<ProductSummary[]>('/api/products'),
+
+  /**
+   * Replaces everything, demo data included. Rebuilds the search index too,
+   * so it can take a little while on a real shop.
+   */
+  async shopifySync(): Promise<{ orders: number; note: string }> {
+    const response = await fetch(`${API_BASE}/api/shopify/sync`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error(await detail(response, `The sync failed (${response.status}).`));
+    }
+    return response.json();
+  },
   reviewInsights: () => get<ReviewInsights>('/api/reviews/insights'),
 
   async analyseReviews(): Promise<ReviewInsights> {

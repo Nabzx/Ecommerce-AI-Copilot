@@ -6,6 +6,7 @@ import Card from '@/components/Card';
 import AlertsPanel from '@/components/AlertsPanel';
 import CopilotPanel from '@/components/CopilotPanel';
 import CopyStudio from '@/components/CopyStudio';
+import DataSourceBadge from '@/components/DataSourceBadge';
 import LowStockTable from '@/components/LowStockTable';
 import MetricCard from '@/components/MetricCard';
 import ProductSearch from '@/components/ProductSearch';
@@ -22,6 +23,7 @@ import {
   type CustomerStats,
   type LowStockRow,
   type RevenuePoint,
+  type Health,
   type Stockout,
   type Summary,
   type TopProduct,
@@ -44,6 +46,7 @@ export default function Dashboard() {
   const [copilotOpen, setCopilotOpen] = useState(false);
   // null while we're still asking the API whether a password is needed.
   const [needsSignIn, setNeedsSignIn] = useState<boolean | null>(null);
+  const [health, setHealth] = useState<Health | null>(null);
 
   // Owned here so the side rail and the phone sheet share one conversation.
   const copilot = useCopilot();
@@ -82,7 +85,11 @@ export default function Dashboard() {
   useEffect(() => {
     let live = true;
     getHealth()
-      .then((health) => live && setNeedsSignIn(health.auth_required && !getToken()))
+      .then((info) => {
+        if (!live) return;
+        setHealth(info);
+        setNeedsSignIn(info.auth_required && !getToken());
+      })
       // If the API is unreachable, let the dashboard render and report that
       // itself — a sign-in box wouldn't help and would hide the real problem.
       .catch(() => live && setNeedsSignIn(false));
@@ -110,7 +117,17 @@ export default function Dashboard() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-[1440px] px-4 pb-20 sm:px-6">
-      <Header days={days} onDaysChange={setDays} onSignOut={() => { clearToken(); setNeedsSignIn(true); }} />
+      <Header
+        days={days}
+        onDaysChange={setDays}
+        onSignOut={() => {
+          clearToken();
+          setNeedsSignIn(true);
+        }}
+        health={health}
+        // A sync replaces the whole database, so everything on screen is stale.
+        onSynced={() => window.location.reload()}
+      />
 
       <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start xl:gap-4">
         <div>
@@ -267,17 +284,24 @@ function Header({
   days,
   onDaysChange,
   onSignOut,
+  health,
+  onSynced,
 }: {
   days: number;
   onDaysChange: (d: number) => void;
   onSignOut: () => void;
+  health: Health | null;
+  onSynced: () => void;
 }) {
   return (
     <header className="sticky top-0 z-10 -mx-4 mb-4 border-b border-line bg-canvas/85 px-4 py-4 backdrop-blur sm:-mx-6 sm:mb-6 sm:px-6 sm:py-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight text-ink">StoreSense</h1>
-          <p className="label mt-0.5">noszn</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight text-ink">StoreSense</h1>
+            <p className="label mt-0.5">{health?.store ?? 'noszn'}</p>
+          </div>
+          {health && <DataSourceBadge health={health} onSynced={onSynced} />}
         </div>
 
         <div className="flex items-center gap-2">

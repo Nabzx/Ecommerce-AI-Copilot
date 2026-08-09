@@ -1,6 +1,6 @@
 'use client';
 
-import { API_BASE } from '@/lib/api';
+import { API_BASE, type Health } from '@/lib/api';
 
 const KEY = 'storesense-token';
 
@@ -26,14 +26,6 @@ export function clearToken() {
 export function authHeaders(): Record<string, string> {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-export interface Health {
-  status: string;
-  store: string;
-  auth_required: boolean;
-  model_available: boolean;
-  model: string;
 }
 
 export async function getHealth(): Promise<Health> {
