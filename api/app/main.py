@@ -21,11 +21,13 @@ from app import (
     auth,
     chat,
     copywriter,
+    datasource,
     forecast,
     metrics,
     rag,
     search,
     sentiment,
+    shopify,
     vision,
     voice,
 )
@@ -124,7 +126,7 @@ def login(body: LoginRequest, request: Request):
 
 
 @app.get("/health")
-async def health() -> dict:
+async def health(session: Session = Depends(get_session)) -> dict:
     # Reports whether a model is reachable, so the UI can say something useful
     # instead of just failing when someone tries the copilot, and whether a
     # password is needed, so it knows to ask for one.
@@ -134,6 +136,10 @@ async def health() -> dict:
         "auth_required": auth.enabled(),
         "model_available": await llm.available(),
         "model": settings.llm_model,
+        "shopify_configured": bool(
+            settings.shopify_store_domain and settings.shopify_access_token
+        ),
+        "data": datasource.current(session),
     }
 
 
@@ -250,6 +256,44 @@ def delete_alert(alert_id: int, session: Session = Depends(get_session)):
     session.delete(alert)
     session.commit()
     return {"deleted": alert_id}
+
+
+# --- shopify ---
+
+@app.get("/api/shopify/check", dependencies=[Depends(rate_limit)])
+async def check_shopify():
+    """Are the credentials good? Run this before a sync, not after."""
+    try:
+        return await shopify.check()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Shopify didn't answer: {exc}")
+
+
+@app.post("/api/shopify/sync", dependencies=[Depends(rate_limit)])
+async def sync_shopify(history_days: int = Query(365, ge=30, le=1095)):
+    """
+    Pull the store down and rebuild the search index.
+
+    Replaces whatever was there, demo data included — which is the point. It
+    runs in the request rather than in the background because the owner is
+    sitting looking at a button, and a small shop takes seconds.
+    """
+    try:
+        result = await shopify.sync(history_days)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"The sync failed: {exc}")
+
+    # The catalogue changed, so anything retrieval knows about it is now stale.
+    index = await rag.build_index()
+
+    # A different shop means a different demand history.
+    forecast._cache.clear()
+
+    return {**result, "chunks_indexed": index["chunks"]}
 
 
 @app.get("/api/reviews/insights")
