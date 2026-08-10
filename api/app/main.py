@@ -22,6 +22,7 @@ from app import (
     chat,
     copywriter,
     datasource,
+    digest,
     forecast,
     metrics,
     rag,
@@ -256,6 +257,34 @@ def delete_alert(alert_id: int, session: Session = Depends(get_session)):
     session.delete(alert)
     session.commit()
     return {"deleted": alert_id}
+
+
+# --- weekly digest ---
+
+@app.get("/api/digest", dependencies=[Depends(rate_limit)])
+async def get_digest(session: Session = Depends(get_session)):
+    """
+    Last week in a few lines, plus what to do about it.
+
+    Asks the model for the opening sentences, so it takes a moment. Requested
+    on demand rather than with the rest of the dashboard for that reason.
+    """
+    result = await digest.build(session)
+    return {**result, "text": digest.as_text(result)}
+
+
+@app.post("/api/digest/send", dependencies=[Depends(rate_limit)])
+async def send_digest(session: Session = Depends(get_session)):
+    """Email it. Same thing the scheduled job sends."""
+    result = await digest.build(session)
+    try:
+        to = digest.send_email(result)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not send it: {exc}")
+
+    return {"sent_to": to}
 
 
 # --- shopify ---

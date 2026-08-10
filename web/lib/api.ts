@@ -117,6 +117,16 @@ export interface VisionTags {
   rejected_tags: string[];
 }
 
+export interface Digest {
+  store: string;
+  generated_at: string;
+  summary: string;
+  figures: string;
+  actions: string[];
+  sold_out: number;
+  text: string;
+}
+
 export interface DataSource {
   source: string;
   is_demo: boolean;
@@ -213,6 +223,19 @@ export const api = {
   },
 
   products: () => get<ProductSummary[]>('/api/products'),
+
+  digest: () => get<Digest>('/api/digest'),
+
+  async sendDigest(): Promise<{ sent_to: string }> {
+    const response = await fetch(`${API_BASE}/api/digest/send`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error(await detail(response, `Could not send it (${response.status}).`));
+    }
+    return response.json();
+  },
 
   /**
    * Replaces everything, demo data included. Rebuilds the search index too,

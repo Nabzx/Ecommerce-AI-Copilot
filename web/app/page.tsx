@@ -15,6 +15,7 @@ import SentimentCard from '@/components/SentimentCard';
 import SignIn from '@/components/SignIn';
 import StockoutForecast from '@/components/StockoutForecast';
 import VisionTagger from '@/components/VisionTagger';
+import WeeklyDigest from '@/components/WeeklyDigest';
 import ThemeToggle from '@/components/ThemeToggle';
 import { clearToken, getHealth, getToken } from '@/lib/auth';
 import { useCopilot } from '@/lib/useCopilot';
@@ -187,6 +188,13 @@ export default function Dashboard() {
             </Card>
             <Card title="Best sellers" className="lg:col-span-2">
               <BestSellers data={top} />
+            </Card>
+          </div>
+
+          {/* the week in a few lines */}
+          <div className="mt-3 sm:mt-4">
+            <Card title="This week" action={<span className="label">Monday brief</span>}>
+              <WeeklyDigest />
             </Card>
           </div>
 
