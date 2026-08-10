@@ -37,6 +37,18 @@ export default function SentimentCard() {
 
   const unanalysed = data.total - data.analysed;
 
+  // No reviews at all, which is what a freshly synced real store looks like:
+  // Shopify has no reviews API, they live in a separate app. Better to say so
+  // than to show an empty card that reads as broken.
+  if (data.total === 0) {
+    return (
+      <p className="py-6 text-sm text-ink-muted">
+        No reviews loaded. Shopify doesn&apos;t provide them through its API — they live in
+        whatever review app the shop uses, so they need importing separately.
+      </p>
+    );
+  }
+
   if (data.analysed === 0) {
     return (
       <div>

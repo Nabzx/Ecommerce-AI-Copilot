@@ -24,7 +24,7 @@ from sqlmodel import Session, delete
 from app import datasource
 from app.config import settings
 from app.db import create_tables, engine
-from app.models import Customer, DailySales, Order, OrderLine, Product, Variant
+from app.models import Customer, DailySales, Order, OrderLine, Product, Review, Variant
 
 API_VERSION = "2024-10"
 PAGE_SIZE = 250  # Shopify's maximum
@@ -234,7 +234,15 @@ async def sync(history_days: int = 365, client: "ShopifyClient | None" = None) -
     with Session(engine) as session:
         # Full replace rather than a merge. Simpler, and correct as long as
         # this runs as a scheduled refresh rather than an incremental sync.
-        for model in (DailySales, OrderLine, Order, Customer, Variant, Product):
+        #
+        # Reviews go too, and they're the awkward one. Shopify's Admin API has
+        # no reviews resource at all — they live in whatever app the shop uses
+        # (Judge.me, Loox, and so on). So the only reviews here are the demo
+        # ones, and leaving them would be worse than dropping them: products
+        # are recreated with fresh ids, so every review would end up attached
+        # to whichever product happened to land on its old id, and the
+        # sentiment card would blame the wrong things with total confidence.
+        for model in (DailySales, Review, OrderLine, Order, Customer, Variant, Product):
             session.exec(delete(model))
         session.commit()
 
