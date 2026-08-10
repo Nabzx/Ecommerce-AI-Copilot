@@ -7,6 +7,7 @@ import AlertsPanel from '@/components/AlertsPanel';
 import CopilotPanel from '@/components/CopilotPanel';
 import CopyStudio from '@/components/CopyStudio';
 import DataSourceBadge from '@/components/DataSourceBadge';
+import DeadStockCard from '@/components/DeadStock';
 import LowStockTable from '@/components/LowStockTable';
 import MetricCard from '@/components/MetricCard';
 import ProductSearch from '@/components/ProductSearch';
@@ -205,6 +206,13 @@ export default function Dashboard() {
             </Card>
             <Card title="Search the catalogue" action={<span className="label">Semantic</span>}>
               <ProductSearch />
+            </Card>
+          </div>
+
+          {/* what to stop buying — the other half of the forecast */}
+          <div className="mt-3 sm:mt-4">
+            <Card title="Sitting still" action={<span className="label">Dead stock</span>}>
+              <DeadStockCard />
             </Card>
           </div>
 

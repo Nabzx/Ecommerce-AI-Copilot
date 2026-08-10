@@ -117,6 +117,36 @@ export interface VisionTags {
   rejected_tags: string[];
 }
 
+export interface StuckVariant {
+  variant_id: number;
+  product_id: number;
+  product: string;
+  size: string;
+  sku: string;
+  inventory: number;
+  units_sold: number;
+  at_cost: number;
+  at_retail: number;
+  cover_days: number | null;
+}
+
+export interface DeadStock {
+  window_days: number;
+  slow_after_days: number;
+  have_costs: boolean;
+  stuck_units: number;
+  stuck_at_cost: number;
+  stuck_at_retail: number;
+  total_units: number;
+  total_at_cost: number;
+  total_at_retail: number;
+  not_selling: StuckVariant[];
+  slow: StuckVariant[];
+  not_selling_count: number;
+  slow_count: number;
+  size_mix: { size: string; sold: number; sold_share: number; stock: number; stock_share: number }[];
+}
+
 export interface Digest {
   store: string;
   generated_at: string;
@@ -223,6 +253,8 @@ export const api = {
   },
 
   products: () => get<ProductSummary[]>('/api/products'),
+
+  deadstock: () => get<DeadStock>('/api/deadstock'),
 
   digest: () => get<Digest>('/api/digest'),
 
