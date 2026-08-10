@@ -22,6 +22,7 @@ from app import (
     chat,
     copywriter,
     datasource,
+    deadstock,
     digest,
     forecast,
     metrics,
@@ -257,6 +258,20 @@ def delete_alert(alert_id: int, session: Session = Depends(get_session)):
     session.delete(alert)
     session.commit()
     return {"deleted": alert_id}
+
+
+# --- dead stock ---
+
+@app.get("/api/deadstock")
+def get_deadstock(
+    slow_after_days: int = Query(90, ge=30, le=365),
+    session: Session = Depends(get_session),
+):
+    """Stock that isn't moving, and what it's costing to sit there."""
+    return {
+        **deadstock.report(session, slow_after_days=slow_after_days),
+        "size_mix": deadstock.by_size(session),
+    }
 
 
 # --- weekly digest ---
