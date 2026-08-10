@@ -77,3 +77,43 @@ about thirty seconds to wake up.
 
 The LLM is the only thing that really costs anything, and only if you use a
 paid provider. Locally with Ollama it's free.
+
+---
+
+## 5. The Monday digest
+
+The weekly email doesn't schedule itself — there's no scheduler in the app,
+because one process quietly emailing on a timer is a surprising thing to find
+in a web service, and every host already has a better way to do it.
+
+Add these to the API environment first:
+
+```
+SMTP_HOST     = smtp.gmail.com          (or whatever you use)
+SMTP_PORT     = 587
+SMTP_USER     = the sending address
+SMTP_PASSWORD = an app password, not your account password
+DIGEST_TO     = where it should land
+```
+
+Then pick one:
+
+**Render** — add a Cron Job pointing at the same repo and Dockerfile, schedule
+`0 8 * * 1`, command `python -m app.digest --send`.
+
+**GitHub Actions** — a workflow on a `schedule` trigger that curls
+`POST /api/digest/send` with the password. Fine, but it means your API password
+lives in Actions secrets.
+
+**A plain crontab**, if it's running on a box you control:
+
+```
+0 8 * * 1 cd /app && python -m app.digest --send
+```
+
+Check it works before trusting the schedule:
+
+```bash
+python -m app.digest           # prints it
+python -m app.digest --send    # actually sends
+```

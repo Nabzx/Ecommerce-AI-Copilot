@@ -38,6 +38,10 @@ wardrobe".
 **Photo tagging.** Upload a product shot, get back tags from the vocabulary the
 shop already uses.
 
+**A Monday morning brief.** A short summary of the week and what needs doing,
+readable on the dashboard and emailed on a schedule. The one part that comes
+to you rather than waiting to be opened.
+
 **Review sentiment.** Classifies reviews and surfaces what people keep
 mentioning — for noszn, the complaints are mostly about sizing.
 
@@ -84,8 +88,15 @@ Copy `api/.env.example` to `api/.env`, fill in `SHOPIFY_STORE_DOMAIN` and
 `SHOPIFY_ACCESS_TOKEN`, then:
 
 ```bash
+cd api && python -m app.shopify --check   # credentials first
 cd api && python -m app.shopify && python -m app.rag
 ```
+
+Or press **Connect store** in the dashboard header, which does the same thing.
+The header shows whether you're looking at demo data or the real shop.
+
+Reviews are the exception — Shopify has no reviews API, they live in whatever
+review app the shop uses, so the sentiment card needs them imported separately.
 
 Customer names and emails are anonymised on the way in and never stored as
 they arrive.
