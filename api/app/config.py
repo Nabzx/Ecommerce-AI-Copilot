@@ -44,6 +44,16 @@ class Settings(BaseSettings):
     # everyone out — fine locally, set it in production.
     session_secret: str = ""
 
+    # --- weekly digest ---
+    # Optional. Without these the digest is still readable on the dashboard and
+    # printable from the command line, it just doesn't post itself anywhere.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    digest_from: str = ""
+    digest_to: str = ""
+
     # --- voice ---
     # Runs locally through faster-whisper. "base" is the sweet spot: small
     # enough to download in seconds, good enough for a quiet room.
