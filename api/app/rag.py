@@ -126,7 +126,9 @@ def collect_documents(session: Session) -> list[dict]:
     # --- the catalogue ---
     # One chunk per product, written as a sentence rather than a row of fields,
     # because that's what the embedding model is good at reading.
-    products = session.exec(select(Product).order_by(Product.title)).all()
+    products = session.exec(
+        select(Product).where(Product.status == "active").order_by(Product.title)
+    ).all()
     for product in products:
         variants = session.exec(select(Variant).where(Variant.product_id == product.id)).all()
         in_stock = [v.title for v in variants if v.inventory_quantity > 0]

@@ -497,7 +497,9 @@ def get_customers(days: int = Query(30, ge=1, le=365), session: Session = Depend
 @app.get("/api/products")
 def list_products(session: Session = Depends(get_session)):
     """Every product with its sizes and stock — used by search and the copilot."""
-    products = session.exec(select(Product).order_by(Product.title)).all()
+    products = session.exec(
+        select(Product).where(Product.status == "active").order_by(Product.title)
+    ).all()
 
     out = []
     for product in products:

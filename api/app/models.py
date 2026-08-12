@@ -18,6 +18,10 @@ class Product(SQLModel, table=True):
     handle: str = Field(index=True)
     product_type: str  # hoodie, tee, cargos ...
     tags: str = ""  # comma separated, same as Shopify does it
+    # active / draft / archived, straight from Shopify. Archived lines still
+    # have to be here or their past orders lose their revenue, but they have no
+    # business showing up in stock reports or search.
+    status: str = "active"
     description: str = ""
     price: float
     cost: float = 0.0  # what it costs noszn to make, for margin

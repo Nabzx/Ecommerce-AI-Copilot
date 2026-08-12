@@ -63,6 +63,10 @@ def load_series(session: Session) -> tuple[dict[int, np.ndarray], list[date], di
             series[variant_id] = np.zeros(len(days), dtype=np.float32)
         series[variant_id][day_index[day]] = units
 
+    # Every variant, archived included. A discontinued winter line still tells
+    # the model something true about how winter sells, so it stays in training
+    # — it just doesn't get a restock date at the end. That's the `active`
+    # flag's only job.
     detail = {}
     for variant, product in session.exec(
         select(Variant, Product).join(Product, Product.id == Variant.product_id)
@@ -75,6 +79,7 @@ def load_series(session: Session) -> tuple[dict[int, np.ndarray], list[date], di
             "sku": variant.sku,
             "price": variant.price,
             "inventory": variant.inventory_quantity,
+            "active": product.status == "active",
         }
 
     return series, days, detail
@@ -358,7 +363,8 @@ def stockout_report(session: Session, limit: int | None = None) -> list[dict]:
     report = []
     for variant_id, rate in rates.items():
         info = detail.get(variant_id)
-        if not info or info["inventory"] <= 0:
+        # Nothing to reorder for a line that's been discontinued.
+        if not info or not info.get("active", True) or info["inventory"] <= 0:
             continue
 
         # A rate this low means it barely sells; any date we gave would be made up.

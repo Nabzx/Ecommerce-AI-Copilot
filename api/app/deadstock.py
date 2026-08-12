@@ -39,8 +39,13 @@ def report(
     since = date.today() - timedelta(days=window_days)
     cutoff = date.today() - timedelta(days=window_days)
 
+    # Active lines only. An archived product's stock isn't a buying decision
+    # any more — it's discontinued, and listing it would bury the sizes he can
+    # still do something about. Its past orders stay in the revenue figures.
     rows = session.exec(
-        select(Variant, Product).join(Product, Product.id == Variant.product_id)
+        select(Variant, Product)
+        .join(Product, Product.id == Variant.product_id)
+        .where(Product.status == "active")
     ).all()
 
     not_selling: list[dict] = []

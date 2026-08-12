@@ -167,7 +167,7 @@ def low_stock(session: Session, threshold: int | None = None) -> list[dict]:
     rows = session.exec(
         select(Variant, Product)
         .join(Product, Product.id == Variant.product_id)
-        .where(Variant.inventory_quantity <= threshold)
+        .where(Variant.inventory_quantity <= threshold, Product.status == "active")
         .order_by(Variant.inventory_quantity)
     ).all()
 

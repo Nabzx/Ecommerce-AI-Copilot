@@ -16,6 +16,7 @@ dashboard only ever needed to count people, not identify them.
 
 import asyncio
 import hashlib
+import re
 from datetime import datetime, timedelta
 
 import httpx
@@ -49,6 +50,25 @@ def anonymise_email(email: str) -> str:
     """
     digest = hashlib.sha256((email or "").strip().lower().encode()).hexdigest()[:12]
     return f"{digest}@customers.invalid"
+
+
+def strip_html(html: str) -> str:
+    """
+    Shopify keeps product descriptions as HTML. The copilot and the copy
+    generator want the words, not the markup.
+    """
+    text = re.sub(r"<br\s*/?>|</p>|</div>", "\n", html, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = (
+        text.replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&#39;", "'")
+        .replace("&quot;", '"')
+    )
+    # Collapse the blank lines the markup leaves behind.
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 def parse_time(value: str | None) -> datetime:
@@ -256,7 +276,8 @@ async def sync(history_days: int = 365, client: "ShopifyClient | None" = None) -
                 handle=row.get("handle", ""),
                 product_type=(row.get("product_type") or "other").lower(),
                 tags=row.get("tags", ""),
-                description="",
+                status=(row.get("status") or "active").lower(),
+                description=strip_html(row.get("body_html") or ""),
                 price=float(row["variants"][0]["price"]) if row.get("variants") else 0.0,
                 cost=next(
                     (
