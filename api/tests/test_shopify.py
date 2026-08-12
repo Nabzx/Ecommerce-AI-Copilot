@@ -93,6 +93,8 @@ PRODUCT = {
     "tags": "hoodie,black",
     "created_at": "2026-01-05T10:00:00+00:00",
     "image": {"src": "https://cdn/hoodie.jpg"},
+    "status": "active",
+    "body_html": "<p>400gsm loopback.</p><p>cut boxy &amp; short.</p>",
     "variants": [
         {"id": 501, "title": "M", "sku": "H-M", "price": "85.00",
          "inventory_quantity": 4, "inventory_item_id": 901},
@@ -315,3 +317,83 @@ def test_missing_credentials_say_what_to_do(monkeypatch):
 
     with pytest.raises(ValueError, match="seeder"):
         shopify.ShopifyClient()
+
+
+def test_html_is_stripped_out_of_the_product_description():
+    """Shopify stores descriptions as HTML; the copilot wants the words."""
+    assert shopify.strip_html("<p>heavyweight.</p><p>cut boxy &amp; short.</p>") == (
+        "heavyweight.\ncut boxy & short."
+    )
+    assert shopify.strip_html("") == ""
+    assert shopify.strip_html("plain text") == "plain text"
+
+
+def test_the_description_comes_across(synced):
+    """It was being dropped on the floor and set to an empty string."""
+    from sqlmodel import Session, select
+
+    from app.models import Product
+
+    engine, _ = synced
+    with Session(engine) as session:
+        product = session.exec(select(Product)).one()
+        assert "400gsm loopback" in product.description
+        assert "<p>" not in product.description
+
+
+def test_the_product_status_comes_across(synced):
+    from sqlmodel import Session, select
+
+    from app.models import Product
+
+    engine, _ = synced
+    with Session(engine) as session:
+        assert session.exec(select(Product)).one().status == "active"
+
+
+def test_an_archived_product_keeps_its_orders_but_leaves_the_stock_reports(tmp_path, monkeypatch):
+    """
+    The awkward middle case. A discontinued line still earned its revenue, so
+    dropping it would understate the past — but it isn't a buying decision any
+    more, so it has no business in dead stock or low stock.
+    """
+    import asyncio
+
+    from sqlmodel import Session, SQLModel, create_engine, select
+
+    from app import deadstock, metrics
+    from app.models import Product
+
+    archived = {**PRODUCT, "id": 999, "title": "Last Winter Coat", "status": "archived"}
+
+    def two_products(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.endswith("/products.json"):
+            return httpx.Response(200, json={"products": [PRODUCT, archived]})
+        if path.endswith("/customers.json"):
+            return httpx.Response(200, json={"customers": [CUSTOMER]})
+        if path.endswith("/orders.json"):
+            return httpx.Response(200, json={"orders": [ORDER]})
+        if path.endswith("/inventory_items.json"):
+            return httpx.Response(200, json={"inventory_items": [{"id": 901, "cost": "26.00"}]})
+        return httpx.Response(404, json={})
+
+    engine = create_engine(f"sqlite:///{tmp_path}/archived.db")
+    SQLModel.metadata.create_all(engine)
+    monkeypatch.setattr("app.db.engine", engine)
+    monkeypatch.setattr("app.shopify.engine", engine)
+    monkeypatch.setattr("app.shopify.create_tables", lambda: None)
+
+    client = shopify.ShopifyClient(
+        domain="noszn.myshopify.com", token="t", transport=httpx.MockTransport(two_products)
+    )
+    asyncio.run(shopify.sync(client=client))
+
+    with Session(engine) as session:
+        titles = {p.title for p in session.exec(select(Product)).all()}
+        assert "Last Winter Coat" in titles, "archived products still have to be stored"
+
+        # But nothing that asks "what should I do about stock" should see it.
+        stuck = deadstock.report(session)
+        assert all("Winter" not in row["product"] for row in stuck["slow"] + stuck["not_selling"])
+        assert all("Winter" not in row["product"] for row in metrics.low_stock(session, 999))

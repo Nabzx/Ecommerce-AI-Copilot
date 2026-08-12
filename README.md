@@ -84,6 +84,20 @@ docker compose up --build
 <details>
 <summary>Pointing it at a real Shopify store</summary>
 
+In Shopify: **Settings → Apps → Develop apps → Create an app**, then give it
+these Admin API scopes and install it to get the token.
+
+| Scope | For |
+|---|---|
+| `read_products` | the catalogue, sizes and stock levels |
+| `read_orders` | revenue, AOV, units, the forecast |
+| `read_customers` | repeat-purchase rate |
+| `read_inventory` | cost per item, which is what makes margin real |
+
+`read_orders` only covers the last 60 days by default. Anything older needs
+**read_all_orders**, which Shopify grants on request — without it the forecast
+has two months of history to learn from instead of a year.
+
 Copy `api/.env.example` to `api/.env`, fill in `SHOPIFY_STORE_DOMAIN` and
 `SHOPIFY_ACCESS_TOKEN`, then:
 
@@ -95,8 +109,15 @@ cd api && python -m app.shopify && python -m app.rag
 Or press **Connect store** in the dashboard header, which does the same thing.
 The header shows whether you're looking at demo data or the real shop.
 
-Reviews are the exception — Shopify has no reviews API, they live in whatever
-review app the shop uses, so the sentiment card needs them imported separately.
+Two things don't come across. **Reviews** — Shopify has no reviews API, they
+live in whatever review app the shop uses, so the sentiment card needs them
+imported separately. And the **policy documents** in `api/app/knowledge/` are
+written by hand, not synced, so they need replacing with the shop's real
+shipping, returns and sizing pages before the copilot cites them at anyone.
+
+Archived products still come down, because their past orders are part of the
+revenue, but they're kept out of the stock reports and search — a discontinued
+line isn't a buying decision.
 
 Customer names and emails are anonymised on the way in and never stored as
 they arrive.
