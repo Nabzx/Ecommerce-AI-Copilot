@@ -191,13 +191,33 @@ def send_email(digest: dict) -> str:
         )
 
     message = EmailMessage()
-    message["Subject"] = f"{digest['store']} — last week"
+    # A colon rather than an em-dash keeps the subject plain ASCII. An em-dash
+    # forces the whole line into MIME encoding — it decodes fine in a modern
+    # client, but there's no reason to make an inbox work for it.
+    message["Subject"] = f"{digest['store']}: last week"
     message["From"] = settings.digest_from or settings.smtp_user
     message["To"] = settings.digest_to
     message.set_content(as_text(digest))
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as server:
-        server.starttls()
+    # Three shapes of SMTP server in the wild, and the wrong one fails outright:
+    #
+    #   465  implicit TLS, encrypted from the first byte
+    #   587  plain connection, upgraded with STARTTLS  (what most providers want)
+    #   local dev servers, no encryption at all
+    #
+    # Calling starttls() unconditionally raised SMTPNotSupportedError against
+    # anything in the third group, so it's asked for only when the server says
+    # it can, which also covers the first two without a setting to get wrong.
+    if settings.smtp_port == 465:
+        connection = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=30)
+    else:
+        connection = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30)
+
+    with connection as server:
+        server.ehlo()
+        if settings.smtp_port != 465 and server.has_extn("starttls"):
+            server.starttls()
+            server.ehlo()  # capabilities change after the upgrade
         if settings.smtp_user:
             server.login(settings.smtp_user, settings.smtp_password)
         server.send_message(message)
