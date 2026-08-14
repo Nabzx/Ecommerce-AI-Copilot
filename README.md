@@ -39,7 +39,7 @@ wardrobe".
 shop already uses.
 
 **A Monday morning brief.** A short summary of the week and what needs doing,
-readable on the dashboard and emailed on a schedule. The one part that comes
+readable on the dashboard and emailed on a schedule by an AWS Lambda. The one part that comes
 to you rather than waiting to be opened.
 
 **Review sentiment.** Classifies reviews and surfaces what people keep
@@ -141,7 +141,11 @@ they arrive.
 - **Voice** — Whisper locally, feeding the same chat path as typing.
 - **Semantic search** over the catalogue.
 - **Sentiment with a closed theme vocabulary**, so the counts actually add up.
-- **Tests and CI** on the gateway, retrieval and login, none of which touch a model.
+- **Scheduled delivery on AWS** — EventBridge and a dependency-free Lambda, so
+  the app itself needs no scheduler.
+- **Token and cost tracking** on every model call, broken down by feature.
+- **Tests and CI** on the gateway, retrieval, login and the Lambda, none of
+  which touch a model.
 - **A shared-password login** — off by default so a fresh clone just runs, on
   the moment you set `APP_PASSWORD`. Signed tokens, constant-time comparison,
   and a much tighter rate limit on the one endpoint where requests are guesses.

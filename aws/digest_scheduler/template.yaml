@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  Sends the StoreSense weekly digest. EventBridge wakes a Lambda on Monday
+  morning, it signs in to the API and asks it to email the brief.
+
+Parameters:
+  ApiUrl:
+    Type: String
+    Description: Where StoreSense is deployed, e.g. https://storesense.onrender.com
+  AppPassword:
+    Type: String
+    NoEcho: true
+    Description: The same APP_PASSWORD the API is running with.
+  Schedule:
+    Type: String
+    # Monday 08:00 UTC. EventBridge cron takes six fields, and the day-of-month
+    # has to be ? when day-of-week is set — one of the two must always be ?.
+    Default: "cron(0 8 ? * MON *)"
+
+Resources:
+  DigestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: storesense-weekly-digest
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: ./
+      # Nothing here is CPU bound — it waits on an HTTP call. The memory is
+      # only up from 128 because Lambda scales network and CPU with it, and a
+      # cold API can take the best part of a minute to answer.
+      MemorySize: 256
+      Timeout: 180
+      Environment:
+        Variables:
+          STORESENSE_API_URL: !Ref ApiUrl
+          STORESENSE_PASSWORD: !Ref AppPassword
+      Events:
+        Weekly:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref Schedule
+            Name: storesense-weekly-digest
+            Description: Monday morning brief
+
+  # Two weeks is plenty to answer "did last Monday's email go out?", and it
+  # stops the log group growing forever at no benefit.
+  DigestLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${DigestFunction}"
+      RetentionInDays: 14
+
+Outputs:
+  FunctionName:
+    Description: Invoke this by hand to test before trusting the schedule
+    Value: !Ref DigestFunction

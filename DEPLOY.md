@@ -98,12 +98,11 @@ DIGEST_TO     = where it should land
 
 Then pick one:
 
+**AWS Lambda + EventBridge** — see `aws/README.md`. A single dependency-free
+file plus a SAM template; four invocations a month sits inside the free tier.
+
 **Render** — add a Cron Job pointing at the same repo and Dockerfile, schedule
 `0 8 * * 1`, command `python -m app.digest --send`.
-
-**GitHub Actions** — a workflow on a `schedule` trigger that curls
-`POST /api/digest/send` with the password. Fine, but it means your API password
-lives in Actions secrets.
 
 **A plain crontab**, if it's running on a box you control:
 
