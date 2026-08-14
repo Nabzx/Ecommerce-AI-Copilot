@@ -30,6 +30,7 @@ from app import (
     search,
     sentiment,
     shopify,
+    usage,
     vision,
     voice,
 )
@@ -93,6 +94,10 @@ app.add_middleware(
 def on_startup() -> None:
     # Makes a fresh clone work — tables exist even before the seeder runs.
     create_tables()
+
+    # From here on every model call gets counted. Set at startup rather than
+    # imported into the gateway, so scripts and tests can use it untracked.
+    llm.on_usage = usage.record
 
     if not auth.enabled():
         print(
@@ -258,6 +263,14 @@ def delete_alert(alert_id: int, session: Session = Depends(get_session)):
     session.delete(alert)
     session.commit()
     return {"deleted": alert_id}
+
+
+# --- what the models cost ---
+
+@app.get("/api/usage")
+def get_usage(days: int = Query(30, ge=1, le=365), session: Session = Depends(get_session)):
+    """Tokens and spend, broken down by which feature spent it."""
+    return usage.summary(session, days)
 
 
 # --- dead stock ---

@@ -90,6 +90,7 @@ async def tag_image(session: Session, image_bytes: bytes) -> dict:
         ],
         temperature=0.0,
         timeout=120.0,
+        label="vision.structure",
     )
     data = extract_object(reply)
 

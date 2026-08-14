@@ -126,6 +126,7 @@ async def write_summary(store: str, figures: str) -> str:
                 [{"role": "user", "content": SUMMARY_PROMPT.format(store=store, figures=figures)}],
                 temperature=0.4,
                 timeout=90.0,
+                label="digest",
             )
         ).strip()
     except (LLMError, Exception):

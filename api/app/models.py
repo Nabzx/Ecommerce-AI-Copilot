@@ -110,6 +110,29 @@ class Chunk(SQLModel, table=True):
     embedding: bytes  # float32 array, packed
 
 
+class Usage(SQLModel, table=True):
+    """
+    One row per model call: what it was for, how many tokens, what it cost.
+
+    Kept per request rather than as a running total so the dashboard can break
+    it down by feature — "the copilot is 80% of the bill" is the useful shape,
+    and you can't recover that from a single counter.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    endpoint: str = Field(index=True)  # "chat", "copy.description", "sentiment"
+    model: str
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    cost_gbp: float = 0.0
+    # False when the model isn't in the price list, so a total can say it's
+    # incomplete rather than quietly under-reporting.
+    priced: bool = True
+    streamed: bool = False
+    created_at: datetime = Field(index=True)
+
+
 class SyncState(SQLModel, table=True):
     """
     What filled this database, and when.

@@ -104,7 +104,7 @@ async def parse_rule(phrase: str) -> AlertRule:
     for _ in range(2):
         # An LLMError means no model, not a bad rule — let it through untouched
         # so the caller can say "start Ollama" rather than "I didn't understand".
-        reply = await llm.complete(messages, temperature=0.0)
+        reply = await llm.complete(messages, temperature=0.0, label="alerts")
 
         try:
             return AlertRule(**extract_json(reply))

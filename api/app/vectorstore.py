@@ -66,7 +66,9 @@ class ModelEmbedder:
 
     async def embed(self, texts: list[str], kind: str = "document") -> np.ndarray:
         prefix = self._prefix(kind)
-        vectors = await llm.embed([f"{prefix}{text}" for text in texts])
+        vectors = await llm.embed(
+            [f"{prefix}{text}" for text in texts], label=f"embeddings.{kind}"
+        )
         return normalise(np.asarray(vectors, dtype=np.float32))
 
 

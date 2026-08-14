@@ -13,7 +13,7 @@ at a local Ollama, so the project runs for free with no account anywhere.
 import asyncio
 import base64
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 
 import httpx
 
@@ -55,6 +55,27 @@ class LLMClient:
         self.max_retries = max_retries if max_retries is not None else settings.llm_max_retries
         # Tests pass a fake transport in here so they never touch the network.
         self._transport = transport
+
+        # Set by the app at startup to app.usage.record. Left unset in scripts
+        # and tests, which is why the gateway itself never imports the database
+        # — it hands off a finished call and doesn't care what happens next.
+        self.on_usage: Callable[..., None] | None = None
+
+    def _report(self, label: str, model: str, usage: dict | None, streamed: bool) -> None:
+        """Pass a completed call to whoever is counting, if anyone is."""
+        if not self.on_usage or not usage:
+            return
+        try:
+            self.on_usage(
+                endpoint=label,
+                model=model,
+                prompt_tokens=int(usage.get("prompt_tokens") or 0),
+                completion_tokens=int(usage.get("completion_tokens") or 0),
+                streamed=streamed,
+            )
+        except Exception:
+            # Accounting must never break the call it was measuring.
+            pass
 
     def _client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(
@@ -101,6 +122,7 @@ class LLMClient:
         temperature: float = 0.3,
         max_tokens: int | None = None,
         timeout: float | None = None,
+        label: str = "chat",
     ) -> str:
         """
         Ask for a whole answer in one go.
@@ -120,6 +142,8 @@ class LLMClient:
             payload["max_tokens"] = max_tokens
 
         data = await self._post("/chat/completions", payload, timeout=timeout)
+        self._report(label, payload["model"], data.get("usage"), streamed=False)
+
         try:
             return data["choices"][0]["message"]["content"] or ""
         except (KeyError, IndexError) as exc:
@@ -130,6 +154,7 @@ class LLMClient:
         messages: list[dict],
         model: str | None = None,
         temperature: float = 0.3,
+        label: str = "chat",
     ) -> AsyncIterator[str]:
         """
         Yield the answer a piece at a time.
@@ -144,6 +169,10 @@ class LLMClient:
             "messages": messages,
             "temperature": temperature,
             "stream": True,
+            # Providers only send token counts on a stream if you ask. The
+            # final chunk then arrives with an empty choices list and a usage
+            # block, which is why the loop below has to tolerate both shapes.
+            "stream_options": {"include_usage": True},
         }
 
         last_error: Exception | None = None
@@ -173,9 +202,18 @@ class LLMClient:
 
                             try:
                                 chunk = json.loads(data)
+                            except json.JSONDecodeError:
+                                continue  # a keepalive or something malformed
+
+                            # The usage chunk has no choices at all.
+                            if chunk.get("usage"):
+                                self._report(
+                                    label, payload["model"], chunk["usage"], streamed=True
+                                )
+
+                            try:
                                 piece = chunk["choices"][0]["delta"].get("content")
-                            except (json.JSONDecodeError, KeyError, IndexError):
-                                # A keepalive or a shape we don't recognise.
+                            except (KeyError, IndexError):
                                 continue
 
                             if piece:
@@ -195,12 +233,13 @@ class LLMClient:
 
         raise last_error or LLMUnavailable("the model did not respond")
 
-    async def embed(self, texts: list[str], model: str | None = None) -> list[list[float]]:
+    async def embed(
+        self, texts: list[str], model: str | None = None, label: str = "embeddings"
+    ) -> list[list[float]]:
         """Turn text into vectors for search and RAG."""
-        data = await self._post(
-            "/embeddings",
-            {"model": model or settings.llm_embed_model, "input": texts},
-        )
+        embed_model = model or settings.llm_embed_model
+        data = await self._post("/embeddings", {"model": embed_model, "input": texts})
+        self._report(label, embed_model, data.get("usage"), streamed=False)
         try:
             # Providers don't promise input order back, so sort by index.
             rows = sorted(data["data"], key=lambda row: row["index"])
@@ -228,7 +267,9 @@ class LLMClient:
                 ],
             }
         ]
-        return await self.complete(messages, model=settings.llm_vision_model, temperature=0.2)
+        return await self.complete(
+            messages, model=settings.llm_vision_model, temperature=0.2, label="vision.look"
+        )
 
     async def available(self) -> bool:
         """Is there actually a model to talk to? Used by /health."""

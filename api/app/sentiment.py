@@ -79,7 +79,7 @@ async def classify_texts(texts: list[str]) -> dict[str, tuple[str, str]]:
     # Far slower than a chat reply, and timing it out at 60s would throw away
     # work that was going to finish.
     reply = await llm.complete(
-        [{"role": "user", "content": prompt}], temperature=0.0, timeout=300.0
+        [{"role": "user", "content": prompt}], temperature=0.0, timeout=300.0, label="sentiment"
     )
     rows = extract_array(reply)
 

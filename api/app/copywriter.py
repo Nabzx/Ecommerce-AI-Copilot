@@ -75,7 +75,7 @@ async def stream_description(session: Session, product: Product) -> AsyncIterato
             ),
         },
     ]
-    async for piece in llm.stream(messages, temperature=COPY_TEMPERATURE):
+    async for piece in llm.stream(messages, temperature=COPY_TEMPERATURE, label="copy.description"):
         yield piece
 
 
@@ -114,6 +114,6 @@ async def stream_winback(session: Session, days_since: int = 60) -> AsyncIterato
             ),
         },
     ]
-    async for piece in llm.stream(messages, temperature=COPY_TEMPERATURE):
+    async for piece in llm.stream(messages, temperature=COPY_TEMPERATURE, label="copy.winback"):
         yield piece
 

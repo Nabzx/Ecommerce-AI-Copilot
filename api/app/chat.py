@@ -168,7 +168,7 @@ async def stream_reply(session: Session, question: str, history: list[dict]) -> 
 
     got_anything = False
     try:
-        async for piece in llm.stream(messages):
+        async for piece in llm.stream(messages, label="copilot"):
             got_anything = True
             yield sse({"type": "token", "text": piece})
 
