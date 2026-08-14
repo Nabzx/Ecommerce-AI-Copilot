@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # everyone out — fine locally, set it in production.
     session_secret: str = ""
 
+    # Applied to the published prices in pricing.py, so a rate change is a
+    # setting rather than an edit to a table of numbers.
+    currency_multiplier: float = 1.0
+
     # --- weekly digest ---
     # Optional. Without these the digest is still readable on the dashboard and
     # printable from the command line, it just doesn't post itself anywhere.
