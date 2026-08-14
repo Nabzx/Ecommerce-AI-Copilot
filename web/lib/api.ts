@@ -117,6 +117,16 @@ export interface VisionTags {
   rejected_tags: string[];
 }
 
+export interface Usage {
+  window_days: number;
+  calls: number;
+  tokens: number;
+  cost_gbp: number;
+  unpriced_calls: number;
+  by_endpoint: { endpoint: string; calls: number; tokens: number; cost_gbp: number }[];
+  models: { model: string; calls: number }[];
+}
+
 export interface StuckVariant {
   variant_id: number;
   product_id: number;
@@ -255,6 +265,8 @@ export const api = {
   products: () => get<ProductSummary[]>('/api/products'),
 
   deadstock: () => get<DeadStock>('/api/deadstock'),
+
+  usage: () => get<Usage>('/api/usage'),
 
   digest: () => get<Digest>('/api/digest'),
 

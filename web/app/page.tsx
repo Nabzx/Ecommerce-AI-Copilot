@@ -15,6 +15,7 @@ import RevenueChart from '@/components/RevenueChart';
 import SentimentCard from '@/components/SentimentCard';
 import SignIn from '@/components/SignIn';
 import StockoutForecast from '@/components/StockoutForecast';
+import UsageCard from '@/components/UsageCard';
 import VisionTagger from '@/components/VisionTagger';
 import WeeklyDigest from '@/components/WeeklyDigest';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -230,6 +231,13 @@ export default function Dashboard() {
             </Card>
             <Card title="Tag a photo" action={<span className="label">Vision</span>}>
               <VisionTagger />
+            </Card>
+          </div>
+
+          {/* what the AI costs to run */}
+          <div className="mt-3 sm:mt-4">
+            <Card title="Model usage" action={<span className="label">Tokens &amp; cost</span>}>
+              <UsageCard />
             </Card>
           </div>
 
