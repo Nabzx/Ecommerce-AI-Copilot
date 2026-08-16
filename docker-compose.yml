@@ -1,24 +1,53 @@
 # StoreSense, running end to end.
 #
-#   docker compose up --build
 #   docker compose run --rm seed      # synthetic data + search index
+#   docker compose up --build
 #
-# Then open http://localhost:3000.
+# Then open http://localhost:3000. If either port is already taken:
+#
+#   API_PORT=8010 WEB_PORT=3010 docker compose up --build
+#
+# This runs Postgres rather than SQLite on purpose — it's what a deployment
+# uses, and a stack that only ever gets exercised on SQLite hides the
+# differences until the worst possible moment.
 #
 # The AI features need a model. Ollama runs on the host rather than in here —
 # in a container it can't reach the Mac's GPU, and on CPU the copilot goes
 # from a few seconds to a minute. host.docker.internal points at it.
 
+x-api-env: &api-env
+  DATABASE_URL: postgresql+psycopg://storesense:storesense@db:5432/storesense
+  LLM_BASE_URL: http://host.docker.internal:11434/v1
+
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: storesense
+      POSTGRES_PASSWORD: storesense
+      POSTGRES_DB: storesense
+    volumes:
+      - store-data:/var/lib/postgresql/data
+    healthcheck:
+      # The api and the seeder both start by connecting, so waiting for the
+      # port isn't enough — Postgres accepts connections briefly during init
+      # and then restarts.
+      test: ["CMD-SHELL", "pg_isready -U storesense -d storesense"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
   api:
     build: ./api
     ports:
-      - "8000:8000"
-    environment:
-      DATABASE_URL: sqlite:////data/storesense.db
-      LLM_BASE_URL: http://host.docker.internal:11434/v1
-    volumes:
-      - store-data:/data
+      # Host port is configurable because 8000 is a popular thing to already
+      # have running. Set API_PORT to move it; the dashboard build below reads
+      # the same variable so the two can't drift apart.
+      - "${API_PORT:-8000}:8000"
+    environment: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -28,9 +57,9 @@ services:
       args:
         # The browser makes this call, not the container, so it's localhost
         # from the user's machine rather than the compose service name.
-        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8000}
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     depends_on:
       - api
 
@@ -38,11 +67,10 @@ services:
   seed:
     build: ./api
     profiles: ["tools"]
-    environment:
-      DATABASE_URL: sqlite:////data/storesense.db
-      LLM_BASE_URL: http://host.docker.internal:11434/v1
-    volumes:
-      - store-data:/data
+    environment: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: sh -c "python -m app.seed && python -m app.rag"

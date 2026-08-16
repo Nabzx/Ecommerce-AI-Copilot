@@ -25,7 +25,9 @@ COPY --from=builder /app/package.json /app/package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
+# No public/ directory in this project — every asset is inlined or generated,
+# and copying a folder that doesn't exist fails the build outright rather than
+# being skipped. Add the COPY back alongside the folder if one appears.
 
 EXPOSE 3000
 
