@@ -48,6 +48,17 @@ class Settings(BaseSettings):
     # setting rather than an edit to a table of numbers.
     currency_multiplier: float = 1.0
 
+    # --- fine-tuned copy model (optional) ---
+    # Point these at the LoRA adapter's server to have it write the copy while
+    # everything else stays on the main provider. Blank means copy uses the
+    # same model as the rest of the app.
+    #
+    # It's a separate provider rather than a global switch because the adapter
+    # only serves chat — embeddings, the copilot and sentiment all still need
+    # the general model.
+    copy_llm_base_url: str = ""
+    copy_llm_model: str = ""
+
     # --- weekly digest ---
     # Optional. Without these the digest is still readable on the dashboard and
     # printable from the command line, it just doesn't post itself anywhere.

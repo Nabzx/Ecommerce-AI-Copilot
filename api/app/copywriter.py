@@ -14,10 +14,12 @@ with its training data.
 
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
+from functools import lru_cache
 
 from sqlmodel import Session, func, select
 
-from app.llm import llm
+from app.config import settings
+from app.llm import LLMClient, llm
 from app.models import Order, Product, Variant
 
 # noszn writes lowercase, short, and lets the garment speak. Most of this is
@@ -47,11 +49,60 @@ Do not reword or "correct" them — they are the real names of real products,
 and a customer clicking through to something called by the wrong name is worse
 than no email at all."""
 
+# The fine-tuned adapter was trained against this brief, not the long one, and
+# on facts written as a short list rather than a labelled block.
+#
+# This matters more than it looks. Sending the adapter the full TONE spec gave
+# copy with an Arabic word dropped into the middle of an English sentence — the
+# model was being handed a prompt shape it had never seen. Given the brief it
+# was trained on, it behaves. A tuned model has the tone in its weights and
+# wants its own prompt, not the one written to steer a general model.
+TUNED_TONE = (
+    "You write for noszn, a small clothing brand. Lowercase, short lines, "
+    "plain words. Say what the thing is and what it is made of, then stop. "
+    "Never use marketing language."
+)
+
+
+def using_tuned() -> bool:
+    """Is the copy coming from the fine-tuned adapter rather than the main model?"""
+    return bool(settings.copy_llm_base_url)
+
+
+@lru_cache(maxsize=1)
+def writer() -> LLMClient:
+    """
+    Whichever model writes the copy.
+
+    Falls back to the shared client, so this is a no-op until someone points
+    COPY_LLM_BASE_URL at the fine-tuned adapter's server. Cached because the
+    setting cannot change while the process is running.
+    """
+    if not settings.copy_llm_base_url:
+        return llm
+
+    client = LLMClient(
+        base_url=settings.copy_llm_base_url,
+        model=settings.copy_llm_model or settings.llm_model,
+    )
+    # Keep the accounting, so the tuned model's tokens land in the same place
+    # as everything else's.
+    client.on_usage = llm.on_usage
+    return client
+
 
 def product_brief(session: Session, product: Product) -> str:
     """The facts the copy has to be built from."""
     variants = session.exec(select(Variant).where(Variant.product_id == product.id)).all()
     in_stock = [v.title for v in variants if v.inventory_quantity > 0]
+
+    if using_tuned():
+        # The training format: one line of comma-separated facts, nothing else.
+        return (
+            f"Write the product description for {product.title}.\n"
+            f"Facts: {product.product_type}, £{product.price:.0f}, "
+            f"{product.tags.replace(',', ', ')}"
+        )
 
     return (
         f"Product: {product.title}\n"
@@ -64,18 +115,30 @@ def product_brief(session: Session, product: Product) -> str:
 
 async def stream_description(session: Session, product: Product) -> AsyncIterator[str]:
     """Two or three lines for a product page."""
-    messages = [
-        {"role": "system", "content": TONE},
-        {
-            "role": "user",
-            "content": (
-                f"{product_brief(session, product)}\n\n"
-                "Write the product description. Two or three short lines, about "
-                "40 words. No headline, no bullet points."
-            ),
-        },
-    ]
-    async for piece in llm.stream(messages, temperature=COPY_TEMPERATURE, label="copy.description"):
+    brief = product_brief(session, product)
+    if using_tuned():
+        # The brief already reads "Write the product description for X" and the
+        # adapter learned the length from the examples, so asking again here
+        # would be a third prompt shape it has never seen.
+        messages = [
+            {"role": "system", "content": TUNED_TONE},
+            {"role": "user", "content": brief},
+        ]
+    else:
+        messages = [
+            {"role": "system", "content": TONE},
+            {
+                "role": "user",
+                "content": (
+                    f"{brief}\n\n"
+                    "Write the product description. Two or three short lines, about "
+                    "40 words. No headline, no bullet points."
+                ),
+            },
+        ]
+    async for piece in writer().stream(
+        messages, temperature=COPY_TEMPERATURE, label="copy.description"
+    ):
         yield piece
 
 
@@ -102,7 +165,7 @@ async def stream_winback(session: Session, days_since: int = 60) -> AsyncIterato
             stocked.append(f"{product.title} (£{product.price:.0f})")
 
     messages = [
-        {"role": "system", "content": TONE},
+        {"role": "system", "content": TUNED_TONE if using_tuned() else TONE},
         {
             "role": "user",
             "content": (
@@ -114,6 +177,8 @@ async def stream_winback(session: Session, days_since: int = 60) -> AsyncIterato
             ),
         },
     ]
-    async for piece in llm.stream(messages, temperature=COPY_TEMPERATURE, label="copy.winback"):
+    async for piece in writer().stream(
+        messages, temperature=COPY_TEMPERATURE, label="copy.winback"
+    ):
         yield piece
 
