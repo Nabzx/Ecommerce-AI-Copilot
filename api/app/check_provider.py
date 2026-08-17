@@ -47,12 +47,18 @@ async def main() -> int:
         pieces = [p async for p in client.stream(question, label="check.stream", temperature=0)]
         print(f"ok    streaming   {''.join(pieces).strip()[:60]!r}")
 
-        vectors = await client.embed(["a test sentence"], label="check.embed")
-        print(f"ok    embeddings  {len(vectors[0])} dimensions")
-
     except LLMError as exc:
         print(f"\nFAIL  {exc}")
         return 1
+
+    # Separate, because a chat-only provider is a normal thing to point at —
+    # a fine-tuned adapter serves completions and nothing else, and the app
+    # can take its embeddings from somewhere else entirely.
+    try:
+        vectors = await client.embed(["a test sentence"], label="check.embed")
+        print(f"ok    embeddings  {len(vectors[0])} dimensions")
+    except LLMError:
+        print("note  no embeddings here - chat only, which is fine")
 
     # --- what it cost ---
     print()
