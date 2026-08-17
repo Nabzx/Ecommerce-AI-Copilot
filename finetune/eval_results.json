@@ -1,0 +1,97 @@
+{
+  "base": {
+    "model": "base",
+    "banned_per_generation": 0.0,
+    "generations_with_banned": 0,
+    "capitalised_lines": 20,
+    "generations_with_stray_script": 0,
+    "avg_words": 52.2,
+    "generations": 11
+  },
+  "tuned": {
+    "model": "tuned",
+    "banned_per_generation": 0.0,
+    "generations_with_banned": 0,
+    "capitalised_lines": 0,
+    "generations_with_stray_script": 0,
+    "avg_words": 16.5,
+    "generations": 11
+  },
+  "tuned_sampled": {
+    "model": "tuned_sampled",
+    "banned_per_generation": 0.0,
+    "generations_with_banned": 0,
+    "capitalised_lines": 0,
+    "generations_with_stray_script": 0,
+    "avg_words": 16.0,
+    "generations": 11
+  },
+  "samples": [
+    {
+      "prompt": "Write care instructions. Context: looking after the ripstop cargo pant",
+      "reference": "cold wash, hang dry. the ripstop softens with wear rather than washing.\ndon't iron the pocket seams flat.",
+      "base": "Care Instructions:\n\n1. Wash in cold water with similar fabric.\n2. Avoid using bleach or harsh detergents.\n3. Use a gentle detergent specifically designed for ripstop materials.\n4. Hang to dry or tumble dry on low heat.\n5. Do not iron directly onto the material.\n6. Store in a cool, dry place away from direct sunlight.\n\nNote: Always check the care label for specific instructions regarding your particular product.",
+      "tuned": "cold wash, inside out, and keep it away from heat.\nthe ripstop holds its shape better than any other material."
+    },
+    {
+      "prompt": "Write the product description for Cargo Pant \u2014 Black.\nFacts: same product, different angle: emphasise the fabric",
+      "reference": "ripstop, so a snag stays a snag rather than becoming a tear.\ncut straight, 32in inseam.",
+      "base": "Cargo Pant - Black - Emphasizes Fabric's Durability & Comfort\n\nCrafted from high-quality, durable 100% cotton, this cargo pant offers unparalleled comfort and durability. Its black color complements any outfit perfectly, making it an ideal choice for everyday wear or special occasions. The seamless design ensures a secure fit, while the breathable fabric keeps you cool in hot weather. Whether you're lounging on a beach or exploring a city street, this cargo pant will keep you comfortable and stylish all day long.",
+      "tuned": "ribbed cotton that goes with everything.\nribbed through the body, cut wide enough to go under a hoodie."
+    },
+    {
+      "prompt": "Write the product description for Knit Beanie \u2014 Black.\nFacts: accessory, \u00a328, knitted, one size",
+      "reference": "ribbed knit, folded cuff. one size, holds its shape.\nblack, and stays black.",
+      "base": "Knit Beanie - Black is a stylish accessory designed to add warmth and personality to any outfit. Crafted from high-quality wool, this beanie features a comfortable fit that hugs your neck without feeling too tight or uncomfortable. The black color complements many outfits beautifully, making it an excellent choice for both casual and formal settings. Perfect for those who love a cozy touch in their wardrobe, Knit Beanie - Black is sure to become a favorite among fashion enthusiasts. Prices start at just \u00a328, ensuring you can enjoy its warmth without breaking the bank.",
+      "tuned": "ribbed knit that goes with everything.\none size, so you can adjust if you need more or less."
+    },
+    {
+      "prompt": "Write the product description for Wide Leg Sweat \u2014 Grey.\nFacts: trouser, \u00a370, brushed cotton, wide leg, grey marl",
+      "reference": "brushed cotton, cut wide from the knee down.\nelastic waist with a drawcord. grey marl that doesn't go patchy.",
+      "base": "Wide Leg Sweat - Grey features a brushed cotton construction with a wide leg design. Prices range from \u00a370.",
+      "tuned": "the wide leg that goes with everything.\nbrushed through the body, not up the thigh. 400gsm so it doesn't sag."
+    },
+    {
+      "prompt": "Write the product description for Wide Leg Sweat \u2014 Grey.\nFacts: same product, different angle: emphasise comfort",
+      "reference": "brushed inside, wide from the knee.\nelastic waist and a drawcord that stays tied.",
+      "base": "Wide Leg Sweat - Grey\n\nComfortable yet stylish, this versatile sweatshirt offers a wide leg design that's perfect for all occasions. The grey color complements any outfit seamlessly, making it ideal for both casual and formal settings.\n\nCrafted from high-quality materials, this sweatshirt ensures durability and longevity. Its comfortable fit allows you to move freely without feeling cramped or uncomfortable, enhancing your overall comfort during various activities.\n\nWhether you're heading out for a run, attending a meeting, or simply lounging in your favorite chair, this sweatshirt will keep you cool and dry. Its versatility makes it an",
+      "tuned": "the wide leg that goes with everything.\nmade in the UK, so it sits right on your knee."
+    },
+    {
+      "prompt": "Write the product description for Longsleeve \u2014 Bone.\nFacts: same product, different angle: emphasise layering",
+      "reference": "thin enough to layer, heavy enough on its own.\n240gsm, straight body, longer sleeve.",
+      "base": "**Longsleeve - Bone**\n\n**Product Description:**\nThe Longsleeve - Bone is a versatile piece designed to enhance your layering options. Its long sleeves provide ample coverage while its bone-like texture adds a unique, sculptural look that complements any outfit.\n\n**Features:**\n- **Layered Appeal:** The Longsleeve - Bone seamlessly blends into various layers, making it ideal for both casual wear and formal occasions.\n- **Bone Texture:** Its smooth, textured surface ensures a polished finish, perfect for adding a touch of sophistication to any outfit.\n- **Versatile",
+      "tuned": "the long sleeve cut wide enough to go under everything.\nmade in cotton that holds its shape even when you fold it."
+    },
+    {
+      "prompt": "Write a short restock note. Context: Cargo Pant \u2014 Black restocked after two months",
+      "reference": "cargo pant is back in black.\ntwo months is longer than we wanted. the ripstop takes what it takes.",
+      "base": "Cargo Pant - Restocked After Two Months",
+      "tuned": "cargo pant in black, back in 2 months.\nsame cut, same boxy leg."
+    },
+    {
+      "prompt": "Answer this sizing question. Context: customer asking whether to size up in the boxy tee",
+      "reference": "the boxy tee runs about half a size small through the chest.\nif you're normally an M and want the intended fit, take the M. want it looser, take the L.",
+      "base": "The item is a boxy tee, made of cotton.",
+      "tuned": "the boxy tee goes through the same range as the wide one.\nsame cut, same body."
+    },
+    {
+      "prompt": "Write an email subject line. Context: final few units of the puffer vest",
+      "reference": "puffer vest, last few",
+      "base": "Final Puffer Vest Units",
+      "tuned": "the puffer vest's done"
+    },
+    {
+      "prompt": "Write an email subject line. Context: sizes running low across the range",
+      "reference": "running low",
+      "base": "\"Low Stock - Current Sizes Available\"",
+      "tuned": "shorter than 50 chars, same as above"
+    },
+    {
+      "prompt": "Write a short win-back email. Context: lapsed customers; drop coming",
+      "reference": "a drop next week\n\nfour pieces, thursday. the mailing list sees it first.\nthe core hoodie and the boxy tee are in stock now if you don't want to wait.\n\nnoszn",
+      "base": "Subject: Re: Lapsed Customers - Drop Coming\n\nDear [Customer's Name],\n\nI hope this message finds you well.\n\nWe are writing to inform you that we have noticed an increase in your recent purchases and would like to offer you a special discount on our products. This is part of our ongoing efforts to retain and grow our customer base.\n\nPlease let us know if you are interested in receiving this discount or any other assistance related to your account. We value your loyalty and look forward to continuing to serve you with high-quality products.\n\nThank you for choosing Noszn!\n\nBest regards,\n\n[Your Name",
+      "tuned": "we've added some new items that you can take advantage of.\neverything's back in stock.\n\nnothing to return or exchange. just go ahead and buy it."
+    }
+  ]
+}

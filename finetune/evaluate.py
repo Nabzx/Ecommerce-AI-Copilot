@@ -5,7 +5,7 @@ Generates the held-out prompts twice — once from the base model, once with the
 adapter loaded — and scores both the same way. Same prompts, same decoding
 settings, same brief; the only difference is the adapter.
 
-Three measures, chosen because they're objective. "Does it sound like the
+Four measures, chosen because they're objective. "Does it sound like the
 brand" is a judgement call, so instead:
 
   banned words   the tone spec names words the brand never uses. Counting them
@@ -14,6 +14,18 @@ brand" is a judgement call, so instead:
                  unambiguous and easy to count.
   length         the brief asks for two or three short lines. Overshooting is
                  the most common failure of a base model given a style prompt.
+  stray script   added after the fact. Copy generated through the served
+                 adapter came back with an Arabic word dropped into an English
+                 sentence, so it's measured rather than left as an anecdote.
+                 A 0.5B model tuned on 40 examples loses some of its grip on
+                 staying in one language.
+
+Base and tuned are compared greedily, so the difference between them is the
+adapter and not the sampling. But greedy is not what ships — the copy endpoint
+runs at temperature 0.4 — and the stray-script fault does not appear at all
+under greedy decoding. So there's a third column: the tuned model sampled at
+the temperature the app actually uses. Reporting only the greedy numbers would
+have been a clean sheet for a fault I had already seen with my own eyes.
 
 Similarity to the reference copy is reported too, but last and with a caveat —
 on eleven examples it's noisy, and a model can score well on it by copying
@@ -44,8 +56,19 @@ BANNED = [
 
 MAX_NEW_TOKENS = 120
 
+# What app/copywriter.py sets. The eval is only worth anything if at least one
+# column matches what actually runs in the product.
+SHIPPED_TEMPERATURE = 0.4
+SEED = 42
 
-def generate(model, tokenizer, messages: list[dict], target: str) -> str:
+# Anything outside Latin-1 that isn't punctuation the brief actually uses.
+# The copy is English, so a Cyrillic, Arabic or CJK character is always a fault.
+STRAY_SCRIPT = re.compile(r"[^\x00-\xFF\u2018\u2019\u201c\u201d\u2013\u2014\u2026]")
+
+
+def generate(
+    model, tokenizer, messages: list[dict], target: str, temperature: float = 0.0
+) -> str:
     prompt = tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
@@ -55,7 +78,11 @@ def generate(model, tokenizer, messages: list[dict], target: str) -> str:
         output = model.generate(
             **inputs,
             max_new_tokens=MAX_NEW_TOKENS,
-            do_sample=False,  # greedy, so the comparison isn't luck
+            # Greedy by default, so a base-vs-tuned difference is the adapter
+            # and not luck. Passed a temperature, it samples the way the app
+            # does instead.
+            do_sample=temperature > 0,
+            temperature=temperature or None,
             pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
         )
 
@@ -64,7 +91,7 @@ def generate(model, tokenizer, messages: list[dict], target: str) -> str:
 
 
 def score(text: str) -> dict:
-    """The three objective measures, for one generation."""
+    """The objective measures, for one generation."""
     lowered = text.lower()
     banned_hits = sum(1 for word in BANNED if word in lowered)
 
@@ -77,6 +104,7 @@ def score(text: str) -> dict:
     return {
         "banned": banned_hits,
         "capitalised_lines": capitalised,
+        "stray_script": len(STRAY_SCRIPT.findall(text)),
         "lines": len(lines),
         "words": len(text.split()),
     }
@@ -89,6 +117,7 @@ def summarise(name: str, results: list[dict]) -> dict:
         "banned_per_generation": round(sum(r["banned"] for r in results) / n, 2),
         "generations_with_banned": sum(1 for r in results if r["banned"] > 0),
         "capitalised_lines": sum(r["capitalised_lines"] for r in results),
+        "generations_with_stray_script": sum(1 for r in results if r["stray_script"] > 0),
         "avg_words": round(sum(r["words"] for r in results) / n, 1),
         "generations": n,
     }
@@ -115,24 +144,40 @@ def main() -> None:
         outputs[name] = [
             generate(model, tokenizer, row["messages"][:-1], target) for row in rows
         ]
+
+        # Same adapter, sampled at the temperature app/copywriter.py runs at.
+        # Seeded so the number is reproducible run to run.
+        if name == "tuned":
+            print(f"generating with {name} at temperature {SHIPPED_TEMPERATURE}…")
+            torch.manual_seed(SEED)
+            outputs["tuned_sampled"] = [
+                generate(
+                    model, tokenizer, row["messages"][:-1], target,
+                    temperature=SHIPPED_TEMPERATURE,
+                )
+                for row in rows
+            ]
+
         del model
 
     # --- the table ---
     print()
-    header = f"{'':24} {'base':>10} {'tuned':>10}"
+    header = f"{'':24} {'base':>10} {'tuned':>10} {'tuned @0.4':>12}"
     print(header)
     print("-" * len(header))
 
     base = summarise("base", [score(t) for t in outputs["base"]])
     tuned = summarise("tuned", [score(t) for t in outputs["tuned"]])
+    sampled = summarise("tuned_sampled", [score(t) for t in outputs["tuned_sampled"]])
 
     for label, key in [
         ("banned words / gen", "banned_per_generation"),
         ("gens with any banned", "generations_with_banned"),
         ("capitalised lines", "capitalised_lines"),
+        ("gens w/ stray script", "generations_with_stray_script"),
         ("avg words", "avg_words"),
     ]:
-        print(f"{label:24} {base[key]:>10} {tuned[key]:>10}")
+        print(f"{label:24} {base[key]:>10} {tuned[key]:>10} {sampled[key]:>12}")
 
     # --- a couple of examples, because the numbers aren't the whole story ---
     print("\n" + "=" * 70)
@@ -148,6 +193,7 @@ def main() -> None:
             {
                 "base": base,
                 "tuned": tuned,
+                "tuned_sampled": sampled,
                 "samples": [
                     {
                         "prompt": r["messages"][1]["content"],
