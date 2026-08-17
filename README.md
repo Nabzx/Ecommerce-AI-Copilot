@@ -143,12 +143,25 @@ they arrive.
 - **Sentiment with a closed theme vocabulary**, so the counts actually add up.
 - **Scheduled delivery on AWS** — EventBridge and a dependency-free Lambda, so
   the app itself needs no scheduler.
+- **A LoRA fine-tune, evaluated and then left switched off** — it learned the
+  voice and kept inventing the facts. See below.
 - **Token and cost tracking** on every model call, broken down by feature.
 - **Tests and CI** on the gateway, retrieval, login and the Lambda, none of
   which touch a model.
 - **A shared-password login** — off by default so a fresh clone just runs, on
   the moment you set `APP_PASSWORD`. Signed tokens, constant-time comparison,
   and a much tighter rate limit on the one endpoint where requests are guesses.
+
+### On the fine-tune
+
+There's a LoRA adapter in [`finetune/`](finetune/) trained on 51 hand-written
+examples of the brand's voice, served behind an OpenAI-compatible endpoint that
+the gateway drives without any code changes.
+
+It's **off by default**. The voice transferred — 52 words down to 16, twenty
+capitalised lines down to zero — but the 0.5B model invents product facts, and
+called a tee a hoodie. The full numbers and the failure cases are in
+[finetune/README.md](finetune/README.md).
 
 ### On the forecast
 
