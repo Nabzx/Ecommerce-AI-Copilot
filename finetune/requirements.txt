@@ -1,0 +1,20 @@
+# Only needed to train or serve the fine-tuned adapter. Kept out of the API's
+# requirements because torch is a large download for something the dashboard
+# doesn't need — the API talks to the adapter over HTTP like any other
+# provider, so it never imports any of this.
+#
+#   pip install -r finetune/requirements.txt
+
+# Pinned to what actually resolves on Python 3.14 — the versions that were
+# current when this was written have no wheels for it, and pip installs a
+# requirements file all or nothing.
+torch==2.13.0
+transformers==5.15.0
+peft==0.20.0
+datasets==5.0.1
+accelerate==1.14.0
+
+# Serves the trained adapter behind an OpenAI-compatible endpoint, so the
+# gateway can point at it with no code change.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0

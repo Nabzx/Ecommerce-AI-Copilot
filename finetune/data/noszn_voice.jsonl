@@ -1,0 +1,51 @@
+{"kind":"description","product":"Core Hoodie — Black","facts":"hoodie, £85, 400gsm brushed-back cotton loopback, boxy, dropped shoulder","output":"400gsm loopback, brushed back. boxy through the body with a dropped shoulder.\nheavy enough to hold its shape after a year of washing."}
+{"kind":"description","product":"Core Hoodie — Bone","facts":"hoodie, £85, 400gsm brushed-back cotton loopback, bone colourway","output":"the core hoodie in bone. same 400gsm loopback, same boxy cut.\nreads warmer than white and takes a mark less easily."}
+{"kind":"description","product":"Boxy Tee — Black","facts":"tee, £38, 240gsm combed cotton, boxy, runs half a size small","output":"240gsm combed cotton. cut wide and short, sits where it should.\nruns about half a size small through the chest. size up if you want room."}
+{"kind":"description","product":"Boxy Tee — White","facts":"tee, £38, 240gsm combed cotton, boxy","output":"the boxy tee in white. 240gsm, opaque, no shadow through it.\nsame short body and wide shoulder as the black."}
+{"kind":"description","product":"Washed Tee — Charcoal","facts":"tee, £42, 240gsm combed cotton, garment washed","output":"garment washed after making, so it arrives already softened.\ncharcoal that stays charcoal. 240gsm, boxy, no shrink to speak of."}
+{"kind":"description","product":"Longsleeve — Bone","facts":"longsleeve, £48, 240gsm combed cotton, midweight layer","output":"240gsm combed cotton with a longer sleeve and a straight body.\nthin enough to sit under a hood without bulk."}
+{"kind":"description","product":"Crewneck — Ash","facts":"crewneck, £75, 400gsm brushed-back cotton, ash marl","output":"400gsm brushed back, ash marl. ribbed cuffs and hem that hold.\nthe hoodie's weight without the hood."}
+{"kind":"description","product":"Zip Hood — Slate","facts":"hoodie, £92, 400gsm cotton, full zip, slate","output":"full zip, 400gsm, slate. metal hardware, not plastic.\nmeant to go over everything else rather than under it."}
+{"kind":"description","product":"Cargo Pant — Black","facts":"trouser, £95, cotton ripstop, 32in inseam, utility pockets","output":"cotton ripstop with pockets that actually hold something.\nstraight through the leg, 32in inseam on every size up to L."}
+{"kind":"description","product":"Wide Leg Sweat — Grey","facts":"trouser, £70, brushed cotton, wide leg, grey marl","output":"brushed cotton, cut wide from the knee down.\nelastic waist with a drawcord. grey marl that doesn't go patchy."}
+{"kind":"description","product":"Cargo Short — Stone","facts":"short, £65, cotton ripstop, stone, above knee","output":"the cargo pant cut short. same ripstop, same pockets.\nsits just above the knee. stone, which goes with the rest of it."}
+{"kind":"description","product":"Puffer Vest — Black","facts":"outerwear, £120, insulated, black, cut to layer over a hoodie","output":"insulated through the body, nothing in the arms.\ncut wide enough to go over the core hoodie without pulling."}
+{"kind":"description","product":"Knit Beanie — Black","facts":"accessory, £28, knitted, one size","output":"ribbed knit, folded cuff. one size, holds its shape.\nblack, and stays black."}
+{"kind":"description","product":"Cap — Washed Black","facts":"accessory, £32, washed cotton, six panel, one size","output":"six panel, washed cotton, soft crown that sits down rather than up.\nadjustable at the back. one size."}
+{"kind":"subject","context":"restock of the core hoodie in black","output":"core hoodie, back in black"}
+{"kind":"subject","context":"the boxy tee has sold out in M and L","output":"boxy tee, M and L gone"}
+{"kind":"subject","context":"new season drop announcement","output":"new pieces, thursday"}
+{"kind":"subject","context":"win-back email to lapsed customers","output":"it's been a while"}
+{"kind":"subject","context":"final few units of the puffer vest","output":"puffer vest, last few"}
+{"kind":"subject","context":"cargo pant restocked in all sizes","output":"cargo pant, all sizes again"}
+{"kind":"restock","context":"Core Hoodie — Black, M and L back in stock","output":"the core hoodie is back in M and L.\nsame 400gsm, same cut. it goes quickly in those two."}
+{"kind":"restock","context":"Boxy Tee — White, XS to XL restocked","output":"boxy tee in white, restocked across the run.\nruns half a size small, so size up if you're between."}
+{"kind":"restock","context":"Cargo Short — Stone, back for summer","output":"cargo short is back in stone.\nsame ripstop as the pant, cut above the knee."}
+{"kind":"winback","context":"customers who last ordered 60+ days ago; core hoodie and cargo pant in stock","output":"it's been a while\n\nthe core hoodie and the cargo pant are both back in full size runs.\nnothing else has changed. same weights, same cuts.\n\nnoszn"}
+{"kind":"winback","context":"lapsed customers; new washed tee available","output":"still here\n\nwe've added the washed tee in charcoal. garment washed, so it's soft out of the bag.\neverything else is where you left it.\n\nnoszn"}
+{"kind":"winback","context":"lapsed customers; sizes back after a long gap","output":"back in your size\n\nthe sizes that were gone are back. core hoodie, boxy tee, cargo pant.\nno sale, no code. just stock.\n\nnoszn"}
+{"kind":"care","context":"how to wash the heavyweight cotton","output":"cold wash, inside out, hang dry.\nthe cotton will shrink slightly if it goes in a hot dryer, and the weight is the point."}
+{"kind":"care","context":"looking after the ripstop cargo pant","output":"cold wash, hang dry. the ripstop softens with wear rather than washing.\ndon't iron the pocket seams flat."}
+{"kind":"sizing","context":"customer asking whether to size up in the boxy tee","output":"the boxy tee runs about half a size small through the chest.\nif you're normally an M and want the intended fit, take the M. want it looser, take the L."}
+{"kind":"sizing","context":"between sizes on outerwear","output":"take the larger one on outerwear.\nthe puffer vest is already cut to go over a hoodie, so there's room built in."}
+{"kind":"description","product":"Core Hoodie — Black","facts":"same product, different angle: emphasise longevity","output":"heavyweight cotton that gets better rather than worse.\nthe loopback softens, the shape holds. that's the whole idea."}
+{"kind":"description","product":"Boxy Tee — Black","facts":"same product, different angle: emphasise the cut","output":"short in the body, wide in the shoulder.\n240gsm so it hangs instead of clinging."}
+{"kind":"description","product":"Cargo Pant — Black","facts":"same product, different angle: emphasise the fabric","output":"ripstop, so a snag stays a snag rather than becoming a tear.\ncut straight, 32in inseam."}
+{"kind":"description","product":"Puffer Vest — Black","facts":"same product, different angle: emphasise layering","output":"the layer that goes on last.\ninsulated body, open arms, cut wide enough that a hoodie fits under it."}
+{"kind":"description","product":"Crewneck — Ash","facts":"same product, different angle: emphasise the colour","output":"ash marl, which sits between grey and nothing.\n400gsm brushed back, ribbed at the cuff and hem."}
+{"kind":"subject","context":"restock of everything after a long gap","output":"everything's back"}
+{"kind":"subject","context":"only accessories left in stock","output":"beanies and caps"}
+{"kind":"subject","context":"drop landing tomorrow","output":"tomorrow"}
+{"kind":"restock","context":"Knit Beanie — Black back in stock for winter","output":"the beanie is back.\nribbed knit, folded cuff, one size. it's the right time of year for it."}
+{"kind":"restock","context":"Crewneck — Ash restocked in M and L","output":"crewneck in ash, back in M and L.\n400gsm, same as the hoodie, no hood."}
+{"kind":"description","product":"Longsleeve — Bone","facts":"same product, different angle: emphasise layering","output":"thin enough to layer, heavy enough on its own.\n240gsm, straight body, longer sleeve."}
+{"kind":"description","product":"Wide Leg Sweat — Grey","facts":"same product, different angle: emphasise comfort","output":"brushed inside, wide from the knee.\nelastic waist and a drawcord that stays tied."}
+{"kind":"description","product":"Washed Tee — Charcoal","facts":"same product, different angle: emphasise the wash","output":"washed after it's made, so it arrives broken in.\ncharcoal, 240gsm, boxy."}
+{"kind":"description","product":"Cap — Washed Black","facts":"same product, different angle: emphasise fit","output":"low crown, washed soft, sits down on the head.\nsix panel, adjustable, one size."}
+{"kind":"description","product":"Knit Beanie — Black","facts":"same product, different angle: emphasise construction","output":"ribbed the whole way, folded at the cuff.\nknitted tight enough that it doesn't sag by february."}
+{"kind":"description","product":"Zip Hood — Slate","facts":"same product, different angle: emphasise the hardware","output":"metal zip, slate cotton, 400gsm.\nthe hood holds its shape whether it's up or down."}
+{"kind":"care","context":"keeping black black","output":"cold wash, inside out, and keep it out of the dryer.\nthe black holds if you do. it goes grey if you don't."}
+{"kind":"sizing","context":"customer between sizes on the cargo pant","output":"the cargo pant is true to waist and long in the leg.\ntake your usual size. the inseam is 32in up to L."}
+{"kind":"winback","context":"lapsed customers; drop coming","output":"a drop next week\n\nfour pieces, thursday. the mailing list sees it first.\nthe core hoodie and the boxy tee are in stock now if you don't want to wait.\n\nnoszn"}
+{"kind":"subject","context":"sizes running low across the range","output":"running low"}
+{"kind":"restock","context":"Cargo Pant — Black restocked after two months","output":"cargo pant is back in black.\ntwo months is longer than we wanted. the ripstop takes what it takes."}

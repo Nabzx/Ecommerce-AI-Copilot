@@ -24,3 +24,10 @@ out/
 
 # uploads made while demoing the vision tagger
 api/uploads/
+
+# Trained adapter weights and training runs. 44MB of binary that anyone can
+# regenerate in five minutes with `python finetune/train.py`, so the recipe is
+# in git and the output isn't.
+finetune/adapters/
+finetune/runs/
+.venv-ft/
